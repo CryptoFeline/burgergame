@@ -1,12 +1,12 @@
 import { React } from "react";
 import { useBox } from "@react-three/cannon";
 
-export default function SolidBox({ xpos, zpos, height, width, depth }) {
+export default function SolidBox({ xpos, zpos, height, width, depth, isBase, isDynamic }) {
     const [mySolidBox, api] = useBox(() => ({
-        mass: 2,
+        mass: isBase ? 0 : 2,
         position: [xpos, height, zpos],
         args: [width, 1, depth],
-        type: "Static",
+        type: isBase ? "Static" : (isDynamic ? "Dynamic" : "Static"),
     }));
 
     return (

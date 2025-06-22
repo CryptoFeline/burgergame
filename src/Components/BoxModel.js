@@ -1,6 +1,7 @@
 import { React, useRef, useEffect, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import gsap from "gsap";
+import AnimatedIngredient from "./AnimatedIngredient";
 
 export default function BoxModel({
     xpos,
@@ -8,8 +9,7 @@ export default function BoxModel({
     height,
     animate,
     direction,
-    width,
-    depth,
+    ingredient,
     crossedLimit,
     updatePosition,
     gameStarted,
@@ -86,10 +86,10 @@ export default function BoxModel({
         return false;
     };
 
+    // Render the animated ingredient mesh at the animated position
     return (
-        <mesh ref={myBox} position={[xpos, height, zpos]}>
-            <boxGeometry args={[width, 1, depth]} />
-            <meshStandardMaterial color={`hsl(${200 + height * 4},100%,50%)`} />
-        </mesh>
+        <group ref={myBox} position={[xpos, height, zpos]}>
+            <AnimatedIngredient ingredient={ingredient} position={[0, 0, 0]} />
+        </group>
     );
 }

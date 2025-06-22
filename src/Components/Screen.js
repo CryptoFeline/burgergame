@@ -1,23 +1,39 @@
 import React from "react";
+import titleSvg from "../img/title.svg";
 
-const Screen = ({ score, startGame }) => {
+const BurgerGameTitle = () => (
+    <img 
+        src={titleSvg} 
+        alt="Burger Stack" 
+        className="burger-title"
+        width="300"
+        height="80"
+    />
+);
+
+const Screen = ({ score, startGame, isGameOver = false }) => {
     return (
         <>
             <div className="screen">
-                {score > 0 ? (
+                {score > 0 || isGameOver ? (
                     <>
-                        <h4>SCORE</h4>
-                        <h4>{score}</h4>
-                        <button className="again" onClick={() => startGame()}>
+                        <BurgerGameTitle />
+                        <h2 className="game-over-text">GAME OVER</h2>
+                        <div className="final-score-section">
+                            <h4 className="final-score-label">FINAL SCORE</h4>
+                            <h3 className="final-score-value">{score}</h3>
+                        </div>
+                        <button className="play-again-btn" onClick={() => startGame()}>
                             Play Again
                         </button>
                     </>
                 ) : (
                     <>
-                        <p className="text--glitch" data-text="Stack Game">
-                            Stack Game
-                        </p>
-                        <button onClick={() => startGame()}>START</button>
+                        <BurgerGameTitle />
+                        <p className="subtitle">Stack burgers like a boss!</p>
+                        <button className="start-btn" onClick={() => startGame()}>
+                            START GAME
+                        </button>
                     </>
                 )}
             </div>
