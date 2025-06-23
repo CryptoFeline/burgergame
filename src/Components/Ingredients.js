@@ -3,15 +3,15 @@ import { useBox, useCylinder } from "@react-three/cannon";
 import { useLoader } from "@react-three/fiber";
 import { TextureLoader } from "three";
 import * as THREE from "three";
-import bottomBunTexture from "../img/bottombun/topside.png";
-import bottomBunSideTexture from "../img/bottombun/side.png";
-import pattyFlatTexture from "../img/patty/flat.png";
-import pattySideTexture from "../img/patty/side.png";
-import tomatoFlatTexture from "../img/tomato/flat.png";
-import onionFlatTexture from "../img/onion/flat.png";
-import cheeseFlatTexture from "../img/cheese/flat.png";
-import lettuceFlatTexture from "../img/lettuce/flat.png";
-import topBunDomeTexture from "../img/topbun/dome.png";
+import bottomBunTexture from "../img/bottombun/topside.webp";
+import bottomBunSideTexture from "../img/bottombun/side.webp";
+import pattyFlatTexture from "../img/patty/flat.webp";
+import pattySideTexture from "../img/patty/side.webp";
+import tomatoFlatTexture from "../img/tomato/flat.webp";
+import onionFlatTexture from "../img/onion/flat.webp";
+import cheeseFlatTexture from "../img/cheese/flat.webp";
+import lettuceFlatTexture from "../img/lettuce/flat.webp";
+import topBunDomeTexture from "../img/topbun/dome.webp";
 
 // Shared texture configuration function
 const configureTexture = (texture, rotation = 0) => {
