@@ -23,26 +23,34 @@ export default function BoxModel({
         if (myBox && animate && !animationStarted) {
             if (direction === "left") {
                 setAnimationStarted(true);
+                // Move from viewer's top-left (corrected Z coordinate)
+                // Start from top-left, move to bottom-right
                 tl.fromTo(
                     myBox.current.position,
                     {
-                        z: -boundary,
+                        x: boundary * 0.2,
+                        z: -boundary * 0.6,
                     },
                     {
-                        z: boundary + 2,
+                        x: -boundary * 0.2,
+                        z: boundary * 0.6,
                         duration: getDifficulty(),
                         ease: "linear",
                     }
                 );
             } else if (direction === "right") {
                 setAnimationStarted(true);
+                // Move from viewer's top-right (more balanced angle)
+                // Emphasize coming from the right side more than diagonal
                 tl.fromTo(
                     myBox.current.position,
                     {
-                        x: boundary,
+                        x: boundary * 0.6,
+                        z: -boundary * 0.2,
                     },
                     {
-                        x: -(boundary + 2),
+                        x: -boundary * 0.6,
+                        z: boundary * 0.2,
                         duration: getDifficulty(),
                         ease: "linear",
                     }
@@ -75,11 +83,13 @@ export default function BoxModel({
 
     const crossed = () => {
         if (direction === "left") {
-            if (myBox.current.position.z > boundary) {
+            // For left direction, check if moved too far positive in X or Z
+            if (myBox.current.position.x > boundary * 0.7 || myBox.current.position.z > boundary * 0.3) {
                 return true;
             }
         } else if (direction === "right") {
-            if (myBox.current.position.x < -boundary) {
+            // For right direction, check if moved too far negative in X or positive in Z
+            if (myBox.current.position.x < -boundary * 0.7 || myBox.current.position.z > boundary * 0.3) {
                 return true;
             }
         }

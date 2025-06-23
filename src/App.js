@@ -45,6 +45,7 @@ function App() {
     const [fallenBlocks, setFallenBlocks] = useState([]); // Track fallen blocks
     const [towerYOffset, setTowerYOffset] = useState(0); // Track how much the entire tower has moved down
     const [successfulDrops, setSuccessfulDrops] = useState(0); // Count successful drops for scoring
+    const [spawnCounter, setSpawnCounter] = useState(0); // Track spawns for alternating directions
     const [collisionBodies, setCollisionBodies] = useState(new Set()); // Track bodies that have collided
 
     const width = window.innerWidth;
@@ -132,6 +133,9 @@ function App() {
         // Pick a random ingredient except Bun
         const Ingredient = INGREDIENTS[Math.floor(Math.random() * INGREDIENTS.length)];
         setActiveBox({ ingredient: Ingredient });
+        
+        // Increment spawn counter for alternating directions
+        setSpawnCounter(prev => prev + 1);
     };
 
     // Ground collision detection for lives system
@@ -213,7 +217,8 @@ function App() {
             return null;
         }
         let animate = true;
-        let direction = stack.length % 2 === 0 ? "left" : "right";
+        let direction = spawnCounter % 2 === 0 ? "left" : "right";
+        console.log(`Spawn counter: ${spawnCounter}, Direction: ${direction}`); // Debug log
         let Ingredient = activeBox.ingredient;
         // Place the animated block well above the top of the previous stacked mesh
         // Use the original stack position (before tower offset) to keep animation at consistent height
@@ -282,6 +287,7 @@ function App() {
         setScore(0);
         setTowerYOffset(0);
         setSuccessfulDrops(0);
+        setSpawnCounter(0); // Reset spawn counter for alternating directions
         setBGColor("#000");
         
         // Start the game and generate first box with a single timeout
@@ -292,6 +298,7 @@ function App() {
             // Generate box immediately after setting game started
             const Ingredient = INGREDIENTS[Math.floor(Math.random() * INGREDIENTS.length)];
             setActiveBox({ ingredient: Ingredient });
+            setSpawnCounter(1); // Set to 1 for the first spawn
         }, 300); // Increased delay to ensure all state updates
     };
 
