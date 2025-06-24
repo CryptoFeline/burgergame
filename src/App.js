@@ -482,36 +482,73 @@ function App() {
                 {/* UI Elements - only show when game is started and not finished and not loading */}
                 {gameStarted && !gameFinished && !isLoading && (
                     <>
-                        {/* Score Display - Top Left */}
-                        <div className="score-display">
-                            <div className="score-label">SCORE</div>
-                            <div className="score-value">{score}</div>
+                        {/* Desktop UI - individual positioned elements */}
+                        <div className="desktop-ui">
+                            {/* Score Display - Top Left */}
+                            <div className="score-display">
+                                <div className="score-label">SCORE</div>
+                                <div className="score-value">{score}</div>
+                            </div>
+                            
+                            {/* Lives Display - Top Center */}
+                            <div className="lives-display">
+                                {[1, 2, 3].map(heartNum => (
+                                    <HeartIcon 
+                                        key={heartNum}
+                                        filled={heartNum <= lives}
+                                        size={32}
+                                    />
+                                ))}
+                            </div>
+                            
+                            {/* Mute Button - Top Right (left of stop button) */}
+                            <MuteButton 
+                                isMuted={isMuted}
+                                onToggle={toggleMute}
+                            />
+                            
+                            {/* Stop Button - Top Right */}
+                            <button 
+                                onClick={handlePause}
+                                className="stop-button"
+                            >
+                                {gameFinished ? 'New Game' : 'Stop'}
+                            </button>
                         </div>
-                        
-                        {/* Lives Display - Top Center */}
-                        <div className="lives-display">
-                            {[1, 2, 3].map(heartNum => (
-                                <HeartIcon 
-                                    key={heartNum}
-                                    filled={heartNum <= lives}
-                                    size={32}
-                                />
-                            ))}
+
+                        {/* Mobile UI - grid layout */}
+                        <div className="mobile-ui-grid">
+                            {/* Score Display */}
+                            <div className="score-display">
+                                <div className="score-label">SCORE</div>
+                                <div className="score-value">{score}</div>
+                            </div>
+                            
+                            {/* Lives Display */}
+                            <div className="lives-display">
+                                {[1, 2, 3].map(heartNum => (
+                                    <HeartIcon 
+                                        key={heartNum}
+                                        filled={heartNum <= lives}
+                                        size={28}
+                                    />
+                                ))}
+                            </div>
+                            
+                            {/* Mute Button */}
+                            <MuteButton 
+                                isMuted={isMuted}
+                                onToggle={toggleMute}
+                            />
+                            
+                            {/* Stop Button */}
+                            <button 
+                                onClick={handlePause}
+                                className="stop-button"
+                            >
+                                {gameFinished ? 'New Game' : 'Stop'}
+                            </button>
                         </div>
-                        
-                        {/* Mute Button - Top Right (left of stop button) */}
-                        <MuteButton 
-                            isMuted={isMuted}
-                            onToggle={toggleMute}
-                        />
-                        
-                        {/* Stop Button - Top Right */}
-                        <button 
-                            onClick={handlePause}
-                            className="stop-button"
-                        >
-                            {gameFinished ? 'New Game' : 'Stop'}
-                        </button>
                     </>
                 )}
             </div>

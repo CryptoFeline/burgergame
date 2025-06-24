@@ -3,6 +3,7 @@ import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 // Audio manager hook for controlling game sounds
 export const useAudio = () => {
     const [isMuted, setIsMuted] = useState(false);
+    const [backgroundMusicShouldPlay, setBackgroundMusicShouldPlay] = useState(false);
     const audioRefs = useRef({});
 
     // Preload and manage audio files - memoize to prevent recreation
@@ -104,10 +105,19 @@ export const useAudio = () => {
         setIsMuted(prev => {
             const newMutedState = !prev;
             
-            // If unmuting, resume background music if it was playing
-            if (!newMutedState && audioRefs.current.bgMusic) {
-                // Check if bg music should be playing (implement game state check if needed)
-                // For now, we'll handle this in the game logic
+            // If unmuting and background music should be playing, restart it
+            if (!newMutedState && backgroundMusicShouldPlay && audioRefs.current.bgMusic) {
+                console.log('Unmuting - restarting background music');
+                try {
+                    const playPromise = audioRefs.current.bgMusic.play();
+                    if (playPromise !== undefined) {
+                        playPromise.catch(error => {
+                            console.warn('Failed to restart background music:', error);
+                        });
+                    }
+                } catch (error) {
+                    console.warn('Error restarting background music:', error);
+                }
             }
             
             // If muting, pause all currently playing audio
@@ -121,10 +131,12 @@ export const useAudio = () => {
             
             return newMutedState;
         });
-    }, []);
+    }, [backgroundMusicShouldPlay]);
 
     // Start background music
     const startBackgroundMusic = useCallback(() => {
+        console.log('Starting background music, isMuted:', isMuted);
+        setBackgroundMusicShouldPlay(true);
         if (!isMuted) {
             playSound('bgMusic');
         }
@@ -132,6 +144,8 @@ export const useAudio = () => {
 
     // Stop background music
     const stopBackgroundMusic = useCallback(() => {
+        console.log('Stopping background music');
+        setBackgroundMusicShouldPlay(false);
         stopSound('bgMusic');
     }, [stopSound]);
 

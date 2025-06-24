@@ -1,4 +1,5 @@
 import React from 'react';
+import titleSvg from '../img/title.svg';
 
 const Preloader = ({ progress, isLoading }) => {
     if (!isLoading) return null;
@@ -6,17 +7,16 @@ const Preloader = ({ progress, isLoading }) => {
     return (
         <div className="preloader">
             <div className="preloader-content">
-                {/* Burger icon made with CSS */}
-                <div className="burger-icon">
-                    <div className="bun-top"></div>
-                    <div className="lettuce"></div>
-                    <div className="patty"></div>
-                    <div className="cheese"></div>
-                    <div className="bun-bottom"></div>
+                {/* Title SVG logo */}
+                <div className="preloader-logo">
+                    <img 
+                        src={titleSvg} 
+                        alt="Burger Builder" 
+                        className="title-logo"
+                    />
                 </div>
-                
-                <h2 className="loading-title">Cooking Ingredients</h2>
-                
+
+                {/* Progress bar */}
                 <div className="progress-container">
                     <div className="progress-bar">
                         <div 
@@ -27,8 +27,9 @@ const Preloader = ({ progress, isLoading }) => {
                     <div className="progress-text">{Math.round(progress)}%</div>
                 </div>
                 
+                {/* Loading subtext */}
                 <div className="loading-tips">
-                    <p>Be patient while we cook your ingredients!</p>
+                    <p>Cooking the ingredients...</p>
                 </div>
             </div>
         </div>
