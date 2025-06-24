@@ -17,6 +17,9 @@ export const useAudio = () => {
 
     // Initialize audio objects
     useEffect(() => {
+        // Capture the current ref value at the start of the effect
+        const currentAudioRefs = audioRefs.current;
+        
         Object.entries(audioFiles).forEach(([key, src]) => {
             const audio = new Audio();
             audio.src = src;
@@ -35,12 +38,11 @@ export const useAudio = () => {
                 console.warn(`Failed to load audio: ${src}`);
             });
             
-            audioRefs.current[key] = audio;
+            currentAudioRefs[key] = audio;
         });
         
-        // Cleanup on unmount - capture current ref value
+        // Cleanup on unmount - use the captured ref value
         return () => {
-            const currentAudioRefs = audioRefs.current;
             Object.values(currentAudioRefs).forEach(audio => {
                 audio.pause();
                 audio.src = '';

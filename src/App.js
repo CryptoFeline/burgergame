@@ -5,13 +5,18 @@ import BoxModel from "./Components/BoxModel";
 import Screen from "./Components/Screen";
 import HeartIcon from "./Components/HeartIcon";
 import MuteButton from "./Components/MuteButton";
+import Preloader from "./Components/Preloader";
 import GroundCollider from "./Components/GroundCollider";
 import { Physics } from "@react-three/cannon";
 import { nanoid } from "nanoid";
 import { Bun, TopBun, INGREDIENTS } from "./Components/Ingredients";
 import { useAudio } from "./hooks/useAudio";
+import { usePreloader } from "./hooks/usePreloader";
 
 function App() {
+    // Preloader system
+    const { isLoading, progress } = usePreloader();
+    
     // Audio system
     const { isMuted, toggleMute, playSound, startBackgroundMusic, stopBackgroundMusic } = useAudio();
     
@@ -434,25 +439,29 @@ function App() {
 
     return (
         <>
+            {/* Preloader - shows while textures are loading */}
+            <Preloader isLoading={isLoading} progress={progress} />
+            
             <div className="app-wrapper" style={{ backgroundColor: BGColor }}>
-                {(!gameStarted || gameFinished) && (
+                {(!gameStarted || gameFinished) && !isLoading && (
                     <Screen score={score} startGame={startNewGame} isGameOver={gameFinished} />
                 )}
-                <Canvas onClick={() => handleClick()}>
-                    <OrthographicCamera
-                        makeDefault
-                        left={-width / 2}
-                        right={width / 2}
-                        top={height / 2}
-                        bottom={-height / 2}
-                        near={-5}
-                        far={200}
-                        zoom={100}
-                        position={[0, getCameraPosition()[1], 4]}
-                        rotation={[-0.5, 0, 0]}
-                        lookAt={[0, 0, 0]}
-                    />
-                    <ambientLight intensity={0.6} />
+                {!isLoading && (
+                    <Canvas onClick={() => handleClick()}>
+                        <OrthographicCamera
+                            makeDefault
+                            left={-width / 2}
+                            right={width / 2}
+                            top={height / 2}
+                            bottom={-height / 2}
+                            near={-5}
+                            far={200}
+                            zoom={100}
+                            position={[0, getCameraPosition()[1], 4]}
+                            rotation={[-0.5, 0, 0]}
+                            lookAt={[0, 0, 0]}
+                        />
+                        <ambientLight intensity={0.6} />
                     <directionalLight position={[10, 20, 0]} intensity={0.6} />
                     <Physics defaultContactMaterial={{ restitution: 0.02 }}>
                         <group
@@ -467,10 +476,11 @@ function App() {
                         {/* Ground collision detector - moves with tower */}
                         <GroundCollider onCollision={onGroundCollision} yOffset={towerYOffset} />
                     </Physics>
-                </Canvas>
+                    </Canvas>
+                )}
                 
-                {/* UI Elements - only show when game is started and not finished */}
-                {gameStarted && !gameFinished && (
+                {/* UI Elements - only show when game is started and not finished and not loading */}
+                {gameStarted && !gameFinished && !isLoading && (
                     <>
                         {/* Score Display - Top Left */}
                         <div className="score-display">
