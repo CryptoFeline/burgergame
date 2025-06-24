@@ -33,17 +33,27 @@ code {
   transition: background-color 10s ease;
 }
 
-/* UI Elements */
-.score-display {
+/* UI Elements - Unified Height */
+.ui-element {
   position: absolute;
   top: 20px;
-  left: 20px;
   z-index: 200;
+  height: 64px; /* Unified height for all UI elements */
+  display: flex;
+  align-items: center;
   padding: 12px 20px;
   background: rgba(0, 0, 0, 0.8);
   border-radius: 12px;
   border: 2px solid rgba(255, 255, 255, 0.2);
   backdrop-filter: blur(10px);
+}
+
+.score-display {
+  @extend .ui-element;
+  left: 20px;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 80px;
   
   .score-label {
     font-size: 12px;
@@ -55,7 +65,7 @@ code {
   }
   
   .score-value {
-    font-size: 28px;
+    font-size: 24px;
     font-weight: bold;
     color: #ffd23f;
     text-align: center;
@@ -64,35 +74,64 @@ code {
 }
 
 .lives-display {
-  position: absolute;
-  top: 20px;
+  @extend .ui-element;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 200;
-  display: flex;
   gap: 8px;
   padding: 12px 20px;
-  background: rgba(0, 0, 0, 0.8);
-  border-radius: 12px;
+}
+
+.mute-button {
+  @extend .ui-element;
+  right: 140px; /* Position to the left of stop button */
+  width: 64px;
+  padding: 12px;
+  justify-content: center;
+  background: linear-gradient(135deg, #6c757d, #5a6268);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(108, 117, 125, 0.3);
   border: 2px solid rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(10px);
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(108, 117, 125, 0.4);
+    background: linear-gradient(135deg, #5a6268, #495057);
+  }
+  
+  &:active {
+    transform: translateY(0);
+  }
+  
+  &.muted {
+    background: linear-gradient(135deg, #dc3545, #c82333);
+    box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
+    
+    &:hover {
+      background: linear-gradient(135deg, #c82333, #b21e2d);
+      box-shadow: 0 6px 20px rgba(220, 53, 69, 0.4);
+    }
+  }
+  
+  svg {
+    width: 24px;
+    height: 24px;
+    fill: white;
+  }
 }
 
 .stop-button {
-  position: absolute;
-  top: 20px;
+  @extend .ui-element;
   right: 20px;
-  z-index: 200;
-  padding: 12px 24px;
-  font-size: 16px;
-  font-weight: 600;
   background: linear-gradient(135deg, #ff4757, #ff3742);
   color: white;
   border: none;
-  border-radius: 12px;
   cursor: pointer;
   transition: all 0.3s ease;
   box-shadow: 0 4px 15px rgba(255, 71, 87, 0.3);
+  font-size: 16px;
+  font-weight: 600;
+  padding: 12px 24px;
   
   &:hover {
     transform: translateY(-2px);
@@ -201,13 +240,15 @@ code {
 
 /* Mobile Responsive */
 @media (max-width: 768px) {
-  .score-display, .lives-display, .stop-button {
+  .ui-element {
     top: 15px;
+    height: 56px;
     padding: 10px 16px;
   }
   
   .score-display {
     left: 15px;
+    min-width: 70px;
     
     .score-label {
       font-size: 10px;
@@ -215,6 +256,17 @@ code {
     
     .score-value {
       font-size: 20px;
+    }
+  }
+  
+  .mute-button {
+    right: 120px;
+    width: 56px;
+    padding: 10px;
+    
+    svg {
+      width: 20px;
+      height: 20px;
     }
   }
   
@@ -257,12 +309,26 @@ code {
 }
 
 @media (max-width: 480px) {
-  .score-display, .lives-display, .stop-button {
+  .ui-element {
     top: 10px;
+    height: 48px;
+    padding: 8px 12px;
   }
   
   .score-display {
     left: 10px;
+    min-width: 60px;
+  }
+  
+  .mute-button {
+    right: 100px;
+    width: 48px;
+    padding: 8px;
+    
+    svg {
+      width: 18px;
+      height: 18px;
+    }
   }
   
   .stop-button {

@@ -17,6 +17,7 @@ export default function BoxModel({
     const boundary = 15;
     const myBox = useRef();
     const [animationStarted, setAnimationStarted] = useState(false);
+    const [hasCrossedLimit, setHasCrossedLimit] = useState(false);
 
     useEffect(() => {
         const tl = gsap.timeline();
@@ -64,8 +65,9 @@ export default function BoxModel({
     }, [myBox, animate]);
 
     useFrame(() => {
-        if (gameStarted && animate) {
+        if (gameStarted && animate && !hasCrossedLimit) {
             if (crossed()) {
+                setHasCrossedLimit(true); // Prevent multiple calls
                 crossedLimit();
             } else {
                 updatePosition({
@@ -83,13 +85,15 @@ export default function BoxModel({
 
     const crossed = () => {
         if (direction === "left") {
-            // For left direction, check if moved too far positive in X or Z
-            if (myBox.current.position.x > boundary * 0.7 || myBox.current.position.z > boundary * 0.3) {
+            // For left direction, animation ends at x: -boundary * 0.2, z: boundary * 0.6
+            // Check if reached or passed the end position
+            if (myBox.current.position.x <= -boundary * 0.15 || myBox.current.position.z >= boundary * 0.55) {
                 return true;
             }
         } else if (direction === "right") {
-            // For right direction, check if moved too far negative in X or positive in Z
-            if (myBox.current.position.x < -boundary * 0.7 || myBox.current.position.z > boundary * 0.3) {
+            // For right direction, animation ends at x: -boundary * 0.6, z: boundary * 0.2
+            // Check if reached or passed the end position
+            if (myBox.current.position.x <= -boundary * 0.55 || myBox.current.position.z >= boundary * 0.15) {
                 return true;
             }
         }

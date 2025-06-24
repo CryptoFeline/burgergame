@@ -4,12 +4,17 @@ import { OrthographicCamera } from "@react-three/drei";
 import BoxModel from "./Components/BoxModel";
 import Screen from "./Components/Screen";
 import HeartIcon from "./Components/HeartIcon";
+import MuteButton from "./Components/MuteButton";
 import GroundCollider from "./Components/GroundCollider";
 import { Physics } from "@react-three/cannon";
 import { nanoid } from "nanoid";
 import { Bun, TopBun, INGREDIENTS } from "./Components/Ingredients";
+import { useAudio } from "./hooks/useAudio";
 
 function App() {
+    // Audio system
+    const { isMuted, toggleMute, playSound, startBackgroundMusic, stopBackgroundMusic } = useAudio();
+    
     const [windowSize, setWindowSize] = useState({
         width: undefined,
         height: undefined,
@@ -56,6 +61,9 @@ function App() {
 
     const handleClick = () => {
         if (gameStarted && activeBox && !gamePaused && !gameFinished) {
+            // Play drop sound
+            playSound('drop');
+            
             let Ingredient = activeBox.ingredient;
             let height = Ingredient.height;
             
@@ -73,6 +81,12 @@ function App() {
             
             // Add to falling blocks - physics will determine if it lands properly
             setFallenBlocks([...fallenBlocks, droppedBox]);
+            
+            // Play impact sound immediately for better feedback
+            // (We'll play it regardless of whether it lands successfully)
+            setTimeout(() => {
+                playSound('impact');
+            }, 750); // Half second longer delay to sync with visual impact
             
             // Score +1 will be added only if the mesh doesn't fall to the ground
             // This happens after a delay to check if mesh lands properly
@@ -130,6 +144,9 @@ function App() {
             return;
         }
         
+        // Play ingredient spawn sound
+        playSound('ingredientSpawn');
+        
         // Pick a random ingredient except Bun
         const Ingredient = INGREDIENTS[Math.floor(Math.random() * INGREDIENTS.length)];
         setActiveBox({ ingredient: Ingredient });
@@ -165,8 +182,14 @@ function App() {
             // Lose a life for the mesh that hit the ground
             setLives(current => {
                 const newLives = current - 1;
+                
+                // Play life loss sound
+                playSound('lifeInteloss');
+                
                 if (newLives <= 0) {
                     // Game over - no lives left
+                    playSound('gameOver');
+                    stopBackgroundMusic();
                     setGameFinished(true);
                     setGameStarted(false);
                     setActiveBox(null); // Stop any active box
@@ -245,12 +268,47 @@ function App() {
             startNewGame();
         } else {
             // Stop the game immediately and show game over screen
+            playSound('gameOver');
+            stopBackgroundMusic();
+            
+            // If there's an active ingredient spawning/moving, drop it immediately
+            if (activeBox) {
+                // Play drop sound for the active ingredient
+                playSound('drop');
+                
+                let Ingredient = activeBox.ingredient;
+                let height = Ingredient.height;
+                
+                // Create unique ID for this drop
+                const dropId = `stop-drop-${Date.now()}-${Math.random()}`;
+                
+                // Drop the ingredient from its current animated position
+                let droppedBox = {
+                    x: topBoxPosition.x,
+                    z: topBoxPosition.z,
+                    y: topBoxPosition.y,
+                    ingredient: Ingredient,
+                    id: dropId,
+                };
+                
+                // Add to falling blocks
+                setFallenBlocks(prev => [...prev, droppedBox]);
+                
+                // Play impact sound for the dropped ingredient
+                setTimeout(() => {
+                    playSound('impact');
+                }, 750);
+                
+                // Move the base Bun down by the height of the dropped ingredient
+                setTowerYOffset(towerYOffset + height);
+            }
+            
             setGamePaused(true);
             setGameFinished(true);
             setGameStarted(false);
-            setActiveBox(null);
+            setActiveBox(null); // Clear the active box after handling it
             
-            // Drop the top bun from above the tower
+            // Drop the top bun from above the tower (no spawn sound)
             let topBunHeight = TopBun.height;
             let stackHeight = successfulDrops > 0 ? (successfulDrops * 0.5) + towerYOffset : towerYOffset; // Estimate tower height
             
@@ -262,7 +320,7 @@ function App() {
                 id: `topbun-stop-${Date.now()}`,
             };
             
-            // Add top bun to falling blocks
+            // Add top bun to falling blocks (no spawn sound for top bun)
             setFallenBlocks(prev => [...prev, topBunBox]);
             
             // Move the base Bun down by the height of the top bun
@@ -272,6 +330,9 @@ function App() {
 
     const startNewGame = () => {
         console.log("Starting new game...");
+        
+        // Stop any playing audio
+        stopBackgroundMusic();
         
         // Reset all game state first
         setGamePaused(false);
@@ -295,6 +356,9 @@ function App() {
             console.log("Setting game started to true and generating box...");
             setGameStarted(true);
             
+            // Start background music
+            startBackgroundMusic();
+            
             // Generate box immediately after setting game started
             const Ingredient = INGREDIENTS[Math.floor(Math.random() * INGREDIENTS.length)];
             setActiveBox({ ingredient: Ingredient });
@@ -317,17 +381,39 @@ function App() {
     };
 
     const crossedLimit = () => {
-        // When the active box crosses the limit, lose a life
-        if (lives > 1) {
-            setLives(prev => prev - 1);
-            console.log(`Block crossed limit! Lives remaining: ${lives - 1}`);
-        } else {
-            // Game over - no lives left
-            setLives(0);
-            setGameFinished(true);
-            setGameStarted(false);
-            console.log("Game Over - No lives remaining!");
+        // Prevent multiple calls if game is already finished
+        if (gameFinished || gamePaused) {
+            console.log("crossedLimit called but game already finished/paused");
+            return;
         }
+        
+        // Play audio BEFORE any state changes (like handlePause does)
+        playSound('gameOver');
+        stopBackgroundMusic();
+        
+        // Now update state
+        setLives(0);
+        setGameFinished(true);
+        setGameStarted(false);
+        setActiveBox(null); // Clear the active box
+        
+        // Drop the top bun from above the tower to complete the burger
+        let topBunHeight = TopBun.height;
+        let stackHeight = successfulDrops > 0 ? (successfulDrops * 0.5) + towerYOffset : towerYOffset;
+        
+        let topBunBox = {
+            x: 0,
+            z: 0,
+            y: stackHeight + topBunHeight + ANIMATION_DROP_HEIGHT + 2,
+            ingredient: TopBun,
+            id: `topbun-crossed-${Date.now()}`,
+        };
+        
+        // Add top bun to falling blocks
+        setFallenBlocks(prev => [...prev, topBunBox]);
+        
+        // Move the base Bun down by the height of the top bun
+        setTowerYOffset(towerYOffset + topBunHeight);
     };
 
     const getCameraPosition = () => {
@@ -402,6 +488,12 @@ function App() {
                                 />
                             ))}
                         </div>
+                        
+                        {/* Mute Button - Top Right (left of stop button) */}
+                        <MuteButton 
+                            isMuted={isMuted}
+                            onToggle={toggleMute}
+                        />
                         
                         {/* Stop Button - Top Right */}
                         <button 
