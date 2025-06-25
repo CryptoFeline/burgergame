@@ -12,7 +12,7 @@ const initBot = () => {
     bot = new Bot(BOT_TOKEN);
     
     // Game configuration
-    const GAME_SHORT_NAME = 'builder';
+    const GAME_SHORT_NAME = 'buildergame'; // Updated to match BotFather assignment
     
     // Start command - shows the game
     bot.command('start', async (ctx) => {
@@ -61,9 +61,9 @@ Good luck, burger boss! 🎯`;
         
         // Handle game callback (when user clicks "Play Game")
         if (callbackQuery.game_short_name) {
-          console.log(`🎮 User ${ctx.from.first_name} (${ctx.from.id}) clicked to play game`);
+          console.log(`🎮 User ${ctx.from.first_name} (${ctx.from.id}) clicked to play game: ${callbackQuery.game_short_name}`);
           
-          // Answer the callback query (required)
+          // Answer the callback query with the game URL
           await ctx.answerCallbackQuery({
             url: "https://bossburgerbuild.netlify.app"
           });

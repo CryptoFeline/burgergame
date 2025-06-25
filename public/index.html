@@ -19,6 +19,16 @@
     
     <!-- Telegram Games JS Bridge -->
     <script src="https://telegram.org/js/games.js"></script>
+    <!-- Fallback local implementation -->
+    <script>
+      // If the official games.js didn't load or TelegramGameProxy is missing, load our fallback
+      if (typeof window.TelegramGameProxy === 'undefined') {
+        console.log('Loading fallback TelegramGameProxy...');
+        var script = document.createElement('script');
+        script.src = '%PUBLIC_URL%/telegram-games.js';
+        document.head.appendChild(script);
+      }
+    </script>
     
     <!--
       Notice the use of %PUBLIC_URL% in the tags above.
