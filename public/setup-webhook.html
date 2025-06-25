@@ -20,22 +20,35 @@
     <script>
         async function setupWebhook() {
             const resultDiv = document.getElementById('result');
-            resultDiv.innerHTML = 'Setting up webhook...';
+            resultDiv.innerHTML = '⏳ Setting up webhook...';
             
             try {
                 const response = await fetch('/.netlify/functions/telegram-bot', {
                     method: 'GET'
                 });
                 
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+                
                 const data = await response.json();
+                console.log('Response data:', data);
                 
                 if (response.ok) {
-                    resultDiv.innerHTML = '<p class="success">✅ Webhook set up successfully!</p>';
+                    resultDiv.innerHTML = '<p class="success">✅ Webhook set up successfully!</p><p>Webhook URL: ' + data.webhook_url + '</p>';
                 } else {
-                    resultDiv.innerHTML = '<p class="error">❌ Error: ' + data.error + '</p>';
+                    let errorMsg = data.error || 'Unknown error';
+                    let details = data.details ? '<br/>Details: ' + data.details : '';
+                    
+                    if (response.status === 500 && errorMsg.includes('BOT_TOKEN')) {
+                        errorMsg = 'BOT_TOKEN environment variable not set in Netlify';
+                        details = '<br/>📝 Go to Site Settings → Environment Variables and add BOT_TOKEN';
+                    }
+                    
+                    resultDiv.innerHTML = '<p class="error">❌ Error: ' + errorMsg + details + '</p>';
                 }
             } catch (error) {
-                resultDiv.innerHTML = '<p class="error">❌ Error: ' + error.message + '</p>';
+                console.error('Fetch error:', error);
+                resultDiv.innerHTML = '<p class="error">❌ Network Error: ' + error.message + '<br/>Check browser console for details</p>';
             }
         }
     </script>

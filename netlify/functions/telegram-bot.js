@@ -7,7 +7,7 @@ const initBot = () => {
   if (!bot) {
     const BOT_TOKEN = process.env.BOT_TOKEN;
     if (!BOT_TOKEN) {
-      throw new Error('BOT_TOKEN environment variable is required');
+      throw new Error('BOT_TOKEN environment variable is required. Please add it in Netlify Site Settings → Environment Variables.');
     }
     bot = new Bot(BOT_TOKEN);
     
@@ -147,6 +147,9 @@ Good luck, burger boss! 🎯`;
 
 // Netlify Function handler
 exports.handler = async (event, context) => {
+  console.log('Function called with method:', event.httpMethod);
+  console.log('Environment check - BOT_TOKEN exists:', !!process.env.BOT_TOKEN);
+  
   // Handle CORS for preflight requests
   if (event.httpMethod === 'OPTIONS') {
     return {
@@ -162,6 +165,7 @@ exports.handler = async (event, context) => {
 
   try {
     const bot = initBot();
+    console.log('Bot initialized successfully');
     
     if (event.httpMethod === 'POST') {
       // Handle Telegram webhook
