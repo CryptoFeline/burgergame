@@ -249,6 +249,36 @@ code {
       box-shadow: 0 6px 20px rgba(255, 107, 53, 0.4);
     }
   }
+
+  .share-btn {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+    margin-top: 10px;
+    
+    &:hover {
+      background: linear-gradient(135deg, #20c997, #17a2b8);
+      box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
+    }
+  }
+
+  .game-over-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: center;
+    margin-top: 20px;
+  }
+
+  .leaderboard-hint {
+    margin-top: 20px;
+    padding: 10px 15px;
+    background: rgba(0, 123, 255, 0.1);
+    border: 1px solid rgba(0, 123, 255, 0.3);
+    border-radius: 8px;
+    color: #007bff;
+    font-size: 0.9em;
+    text-align: center;
+  }
 }
 
 /* Preloader Styles */

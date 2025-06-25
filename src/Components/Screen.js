@@ -11,7 +11,17 @@ const BurgerGameTitle = () => (
     />
 );
 
-const Screen = ({ score, startGame, isGameOver = false, telegramUser = null, isTelegramEnvironment = false }) => {
+const Screen = ({ score, startGame, isGameOver = false, telegramUser = null, isTelegramEnvironment = false, shareScore = null }) => {
+    
+    const handleShareScore = () => {
+        if (shareScore && score > 0) {
+            const success = shareScore(score);
+            if (!success) {
+                console.warn('Failed to share score');
+            }
+        }
+    };
+
     return (
         <>
             <div className="screen">
@@ -29,12 +39,27 @@ const Screen = ({ score, startGame, isGameOver = false, telegramUser = null, isT
                             <h4 className="final-score-label">FINAL SCORE</h4>
                             <h3 className="final-score-value">{score}</h3>
                             {isTelegramEnvironment && (
-                                <p className="telegram-status">Score saved to Telegram!</p>
+                                <p className="telegram-status">Score saved to leaderboard! 🏆</p>
                             )}
                         </div>
-                        <button className="play-again-btn" onClick={() => startGame()}>
-                            Play Again
-                        </button>
+                        
+                        <div className="game-over-buttons">
+                            <button className="play-again-btn" onClick={() => startGame()}>
+                                Play Again
+                            </button>
+                            
+                            {isTelegramEnvironment && shareScore && score > 0 && (
+                                <button className="share-btn" onClick={handleShareScore}>
+                                    📤 Share Score
+                                </button>
+                            )}
+                        </div>
+                        
+                        {isTelegramEnvironment && (
+                            <div className="leaderboard-hint">
+                                💡 Use /highscores to view the leaderboard
+                            </div>
+                        )}
                     </>
                 ) : (
                     <>

@@ -79,41 +79,75 @@ export const useTelegramGame = () => {
         }
 
         try {
-            // Try the old Telegram Game Proxy first
+            // Ensure score is a positive integer
+            const finalScore = Math.max(0, Math.floor(score));
+            console.log(`📊 Reporting score: ${finalScore}`);
+
+            // For Telegram Games API leaderboards, we need to trigger a callback query
+            // This is the proper way for Telegram Games (not Web Apps)
             if (window.TelegramGameProxy) {
-                console.log('Reporting score via TelegramGameProxy:', score);
-                window.TelegramGameProxy.postScore(score);
+                console.log('Using TelegramGameProxy for score reporting...');
+                
+                // First try the direct postScore method if available
+                if (typeof window.TelegramGameProxy.postScore === 'function') {
+                    window.TelegramGameProxy.postScore(finalScore);
+                }
+                
+                // Also send via postMessage for callback query handling
+                if (window.parent && window.parent !== window) {
+                    window.parent.postMessage({
+                        eventType: 'game_score',
+                        eventData: JSON.stringify({
+                            type: 'game_score',
+                            score: finalScore,
+                            timestamp: Date.now()
+                        })
+                    }, '*');
+                    console.log('✅ Score sent via postMessage for leaderboard processing');
+                }
+                
                 return true;
             }
 
-            // Try the new Telegram Web App API
+            // Fallback to Web App API if available (for Web Apps, not Games)
             if (window.Telegram?.WebApp) {
                 const tg = window.Telegram.WebApp;
-                console.log('Reporting score via Telegram Web App:', score);
+                console.log('Reporting score via Telegram Web App:', finalScore);
                 
                 // Send score data back to the bot
                 tg.sendData(JSON.stringify({ 
                     type: 'game_score', 
-                    score: score,
+                    score: finalScore,
                     timestamp: Date.now()
                 }));
-                
-                // Close the web app after reporting score
-                setTimeout(() => {
-                    tg.close();
-                }, 1000);
                 
                 return true;
             }
 
-            // Fallback: try postMessage to parent
+            // Final fallback: try postMessage to parent
             if (window.parent !== window) {
-                console.log('Reporting score via postMessage:', score);
-                window.parent.postMessage({
-                    type: 'telegram_game_score',
-                    score: score,
+                console.log('Using fallback postMessage method...');
+                
+                // Try multiple message formats for compatibility
+                const scoreData = {
+                    type: 'game_score',
+                    score: finalScore,
                     timestamp: Date.now()
+                };
+                
+                // Format 1: Direct message
+                window.parent.postMessage(scoreData, '*');
+                
+                // Format 2: Wrapped in eventType/eventData
+                window.parent.postMessage({
+                    eventType: 'game_score',
+                    eventData: scoreData
                 }, '*');
+                
+                // Format 3: JSON string (for some integrations)
+                window.parent.postMessage(JSON.stringify(scoreData), '*');
+                
+                console.log('✅ Score sent via fallback postMessage methods');
                 return true;
             }
 
@@ -135,6 +169,61 @@ export const useTelegramGame = () => {
         
         console.warn('No Telegram communication method available');
         return false;
+    }, [isTelegramEnvironment]);
+
+    /**
+     * Share score to other chats/groups
+     * @param {number} score - The score to share
+     * @param {string} message - Optional custom message
+     */
+    const shareScore = useCallback((score, message = null) => {
+        if (!isTelegramEnvironment) {
+            console.log('Not in Telegram environment, cannot share score');
+            return false;
+        }
+
+        try {
+            const finalScore = Math.max(0, Math.floor(score));
+            const shareText = message || `🍔 I just scored ${finalScore} points in Boss Burger Builder! Can you beat my high score?`;
+            
+            // Method 1: Use TelegramGameProxy share functionality
+            if (window.TelegramGameProxy && typeof window.TelegramGameProxy.shareScore === 'function') {
+                console.log('Sharing score via TelegramGameProxy...');
+                window.TelegramGameProxy.shareScore();
+                return true;
+            }
+
+            // Method 2: Use Web App share functionality
+            if (window.Telegram?.WebApp) {
+                const tg = window.Telegram.WebApp;
+                
+                // If switchInlineQuery is available (for inline bot sharing)
+                if (typeof tg.switchInlineQuery === 'function') {
+                    console.log('Sharing via Web App inline query...');
+                    tg.switchInlineQuery(shareText);
+                    return true;
+                }
+            }
+
+            // Method 3: Fallback - try to trigger share via postMessage
+            if (window.parent !== window) {
+                console.log('Sharing via postMessage fallback...');
+                window.parent.postMessage({
+                    type: 'share_score',
+                    score: finalScore,
+                    text: shareText,
+                    timestamp: Date.now()
+                }, '*');
+                return true;
+            }
+
+            console.warn('No share method available');
+            return false;
+
+        } catch (error) {
+            console.error('Failed to share score:', error);
+            return false;
+        }
     }, [isTelegramEnvironment]);
 
     /**
@@ -205,6 +294,7 @@ export const useTelegramGame = () => {
         telegramUser,
         isReady,
         reportScore,
+        shareScore,
         getHighScores,
         showAlert,
         showConfirm,

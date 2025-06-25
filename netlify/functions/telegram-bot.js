@@ -56,11 +56,48 @@ Welcome to the ultimate burger stacking challenge!
 
 *Commands:*
 /start - Play the game
+/highscores - View the leaderboard  
 /help - Show this help message
+
+*Features:*
+🏆 Built-in leaderboards for groups and private chats
+🎮 Perfect stacking mechanics with physics
+🎵 Immersive sound effects and music
+📱 Works great on mobile and desktop
 
 Good luck, burger boss! 🎯`;
 
       await ctx.reply(helpText, { parse_mode: 'Markdown' });
+    });
+
+    // Command to get game statistics
+    bot.command('stats', async (ctx) => {
+      try {
+        const chatId = ctx.chat.id;
+        const chatType = ctx.chat.type;
+        
+        let statsText = "📊 *Game Statistics*\n\n";
+        
+        if (chatType === 'private') {
+          statsText += "🏠 This is your private game space.\n";
+          statsText += "🎮 All your scores are tracked here.\n";
+          statsText += "📤 Use the share button in-game to challenge friends!\n";
+        } else {
+          const chatTitle = ctx.chat.title || 'this group';
+          statsText += `🏘️ Group: *${chatTitle}*\n`;
+          statsText += "🏆 Leaderboards are shared among all group members.\n";
+          statsText += "🎯 Compete with your friends for the highest score!\n";
+        }
+        
+        statsText += "\n🍔 Start playing with /start\n";
+        statsText += "🏆 View rankings with /highscores";
+        
+        await ctx.reply(statsText, { parse_mode: 'Markdown' });
+        
+      } catch (error) {
+        console.error('❌ Error with stats command:', error);
+        await ctx.reply('❌ Unable to get statistics right now.');
+      }
     });
 
     // Handle callback queries (including game scores)
@@ -102,30 +139,52 @@ Good luck, burger boss! 🎯`;
             
             try {
               // Set the game score using Telegram's built-in leaderboard
-              await ctx.api.setGameScore(userId, score, {
+              const setScoreResult = await ctx.api.setGameScore(userId, score, {
                 chat_id: chatId,
                 message_id: messageId,
                 force: true, // Allow score updates even if lower
                 disable_edit_message: false
               });
               
-              console.log(`✅ Score ${score} successfully set for user ${userId}`);
+              console.log(`✅ Score ${score} successfully set for user ${userId}. Result:`, setScoreResult);
               
-              // Answer callback query with confirmation
-              const message = score > 0 
-                ? `🎉 Amazing! Your burger tower score of ${score} has been saved!`
-                : `👍 Score saved! Keep practicing to build taller burger towers!`;
+              // Create personalized confirmation message
+              let message;
+              const userName = ctx.from.first_name;
+              
+              if (score === 0) {
+                message = `� Nice try, ${userName}! Practice makes perfect - keep building those burger towers!`;
+              } else if (score < 10) {
+                message = `🎯 Good start, ${userName}! You scored ${score} points. Can you build an even taller tower?`;
+              } else if (score < 25) {
+                message = `🏆 Impressive, ${userName}! ${score} points is a solid score! The leaderboard has been updated.`;
+              } else if (score < 50) {
+                message = `🌟 Amazing work, ${userName}! ${score} points - you're becoming a burger stacking master!`;
+              } else {
+                message = `🔥 INCREDIBLE, ${userName}! ${score} points is absolutely phenomenal! You're a true Burger Boss!`;
+              }
+              
+              // Add chat context for groups
+              if (ctx.chat.type !== 'private') {
+                message += ` Check out the group leaderboard with /highscores!`;
+              }
               
               await ctx.answerCallbackQuery(message, { show_alert: true });
               
             } catch (scoreError) {
               console.error('❌ Error setting game score:', scoreError);
               
+              // Provide helpful error message based on error type
+              let errorMessage = '❌ There was an issue saving your score.';
+              
+              if (scoreError.error_code === 400) {
+                errorMessage = '❌ Invalid score data. Please try playing again.';
+              } else if (scoreError.error_code === 403) {
+                errorMessage = '❌ Permission denied. The bot might need to be re-added to this chat.';
+              }
+              
               // Still answer the callback query to prevent timeout
-              await ctx.answerCallbackQuery(
-                '❌ There was an issue saving your score. Please try again.',
-                { show_alert: true }
-              );
+              await ctx.answerCallbackQuery(errorMessage, { show_alert: true });
             }
           } else {
             console.log('⚠️ Invalid game data format:', gameData);
@@ -151,17 +210,62 @@ Good luck, burger boss! 🎯`;
     // Handle high scores command
     bot.command('highscores', async (ctx) => {
       try {
-        // Get high scores for this chat
+        console.log(`🏆 High scores requested by ${ctx.from.first_name} (${ctx.from.id}) in chat ${ctx.chat.id}`);
+        
+        // For groups, show the game with a "View Leaderboard" button
+        // For private chats, show the same
         await ctx.replyWithGame(GAME_SHORT_NAME, {
           reply_markup: {
             inline_keyboard: [[
-              { text: "🏆 View High Scores", callback_game: {} }
+              { text: "🏆 View Leaderboard", callback_game: {} }
             ]]
           }
         });
+        
+        // Send additional helpful text
+        const helpText = ctx.chat.type === 'private' 
+          ? "🎮 Click the button above to see the leaderboard and play again!"
+          : "🎮 Click the button above to see the group leaderboard and play!";
+        
+        await ctx.reply(helpText);
+        
       } catch (error) {
         console.error('❌ Error with highscores command:', error);
-        await ctx.reply('❌ Unable to get high scores right now.');
+        await ctx.reply('❌ Unable to show high scores right now. Please try again later.');
+      }
+    });
+
+    // Handle inline queries (for sharing scores)
+    bot.on('inline_query', async (ctx) => {
+      try {
+        const query = ctx.inlineQuery.query;
+        console.log(`🔍 Inline query from ${ctx.from.first_name}: "${query}"`);
+        
+        // Prepare game result for sharing
+        const results = [{
+          type: 'game',
+          id: 'share_game',
+          game_short_name: GAME_SHORT_NAME,
+          reply_markup: {
+            inline_keyboard: [[
+              { text: "🍔 Play BossBurger Builder!", callback_game: {} }
+            ]]
+          }
+        }];
+        
+        await ctx.answerInlineQuery(results, {
+          cache_time: 0,
+          is_personal: false
+        });
+        
+      } catch (error) {
+        console.error('❌ Error handling inline query:', error);
+        // Always try to answer even on error
+        try {
+          await ctx.answerInlineQuery([], { cache_time: 1 });
+        } catch (answerError) {
+          console.error('❌ Error answering inline query:', answerError);
+        }
       }
     });
   }

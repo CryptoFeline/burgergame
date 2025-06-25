@@ -197,28 +197,59 @@
     postScore: function(score) {
       console.log('TelegramGameProxy.postScore called with score:', score);
       
-      // Send score via postMessage to parent (Telegram)
+      // Ensure score is valid
+      const finalScore = Math.max(0, Math.floor(score));
+      
+      // For Telegram Games leaderboards, we need to trigger a callback query
+      // This simulates what happens when the user clicks a button in the game
       if (isIframe && window.parent !== window) {
         try {
+          // The bot expects callback query data in this format
+          const callbackData = JSON.stringify({
+            type: 'game_score',
+            score: finalScore,
+            timestamp: Date.now()
+          });
+          
+          // Method 1: Send as a simulated callback query (preferred for Games API)
+          window.parent.postMessage({
+            callback_query: {
+              id: 'game_score_' + Date.now(),
+              from: {id: 'current_user'}, // Will be filled by Telegram
+              data: callbackData,
+              game_short_name: 'buildergame'
+            }
+          }, '*');
+          console.log('✅ Score posted as callback query for leaderboard');
+          
+          // Method 2: Send as event type (for compatibility)
+          window.parent.postMessage({
+            eventType: 'game_score',
+            eventData: callbackData
+          }, '*');
+          console.log('✅ Score posted via eventType method');
+          
+          // Method 3: Direct message format
           window.parent.postMessage({
             type: 'game_score',
-            score: score,
+            score: finalScore,
             timestamp: Date.now()
           }, '*');
-          console.log('Score posted to Telegram via postMessage');
+          console.log('✅ Score posted via direct message');
+          
         } catch (e) {
-          console.error('Failed to post score via postMessage:', e);
+          console.error('❌ Failed to post score:', e);
         }
       }
       
-      // Also try the event system
+      // Also try the traditional event system
       postEvent('game_score', function(error) {
         if (error) {
-          console.error('Failed to post score via event:', error);
+          console.error('❌ Failed to post score via event:', error);
         } else {
-          console.log('Score posted via event system');
+          console.log('✅ Score posted via event system');
         }
-      }, {score: score});
+      }, {score: finalScore, timestamp: Date.now()});
     },
     paymentFormSubmit: function (formData) {
       if (!formData ||
