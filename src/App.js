@@ -1,4 +1,4 @@
-import { React, useState, useEffect } from "react";
+import { React, useState, useEffect, useCallback } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrthographicCamera } from "@react-three/drei";
 import BoxModel from "./Components/BoxModel";
@@ -12,10 +12,20 @@ import { nanoid } from "nanoid";
 import { Bun, TopBun, INGREDIENTS } from "./Components/Ingredients";
 import { useAudio } from "./hooks/useAudio";
 import { usePreloader } from "./hooks/usePreloader";
+import { useTelegramGame } from "./hooks/useTelegramGame";
 
 function App() {
     // Preloader system
     const { isLoading, progress } = usePreloader();
+    
+    // Telegram integration
+    const { 
+        isTelegramEnvironment, 
+        telegramUser, 
+        isReady: telegramReady, 
+        reportScore, 
+        showAlert 
+    } = useTelegramGame();
     
     // Audio system
     const { isMuted, toggleMute, playSound, startBackgroundMusic, stopBackgroundMusic } = useAudio();
@@ -193,11 +203,7 @@ function App() {
                 
                 if (newLives <= 0) {
                     // Game over - no lives left
-                    playSound('gameOver');
-                    stopBackgroundMusic();
-                    setGameFinished(true);
-                    setGameStarted(false);
-                    setActiveBox(null); // Stop any active box
+                    handleGameOver();
                 }
                 return newLives;
             });
@@ -309,9 +315,7 @@ function App() {
             }
             
             setGamePaused(true);
-            setGameFinished(true);
-            setGameStarted(false);
-            setActiveBox(null); // Clear the active box after handling it
+            handleGameOver();
             
             // Drop the top bun from above the tower (no spawn sound)
             let topBunHeight = TopBun.height;
@@ -393,14 +397,9 @@ function App() {
         }
         
         // Play audio BEFORE any state changes (like handlePause does)
-        playSound('gameOver');
-        stopBackgroundMusic();
-        
         // Now update state
         setLives(0);
-        setGameFinished(true);
-        setGameStarted(false);
-        setActiveBox(null); // Clear the active box
+        handleGameOver();
         
         // Drop the top bun from above the tower to complete the burger
         let topBunHeight = TopBun.height;
@@ -420,6 +419,40 @@ function App() {
         // Move the base Bun down by the height of the top bun
         setTowerYOffset(towerYOffset + topBunHeight);
     };
+
+    // Handle game over and report score to Telegram
+    const handleGameOver = useCallback(async () => {
+        // Play audio and stop music
+        playSound('gameOver');
+        stopBackgroundMusic();
+        
+        // Set game state
+        setGameFinished(true);
+        setGameStarted(false);
+        setActiveBox(null);
+        
+        // Report score to Telegram if in Telegram environment
+        if (isTelegramEnvironment && telegramReady) {
+            try {
+                console.log('Reporting final score to Telegram:', score);
+                const success = await reportScore(score);
+                
+                if (success) {
+                    console.log('Score successfully reported to Telegram');
+                    // Optionally show a confirmation
+                    if (score > 0) {
+                        showAlert(`Great job! Your score of ${score} has been saved!`);
+                    }
+                } else {
+                    console.warn('Failed to report score to Telegram');
+                }
+            } catch (error) {
+                console.error('Error reporting score to Telegram:', error);
+            }
+        } else {
+            console.log('Final score (standalone mode):', score);
+        }
+    }, [isTelegramEnvironment, telegramReady, reportScore, score, playSound, stopBackgroundMusic, showAlert]);
 
     const getCameraPosition = () => {
         // Keep camera at a fixed position since we want the base to sink down
@@ -444,7 +477,13 @@ function App() {
             
             <div className="app-wrapper" style={{ backgroundColor: BGColor }}>
                 {(!gameStarted || gameFinished) && !isLoading && (
-                    <Screen score={score} startGame={startNewGame} isGameOver={gameFinished} />
+                    <Screen 
+                        score={score} 
+                        startGame={startNewGame} 
+                        isGameOver={gameFinished}
+                        telegramUser={telegramUser}
+                        isTelegramEnvironment={isTelegramEnvironment}
+                    />
                 )}
                 {!isLoading && (
                     <Canvas onClick={() => handleClick()}>
