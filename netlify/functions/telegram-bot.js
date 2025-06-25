@@ -3,13 +3,22 @@ const { Bot } = require('grammy');
 // Initialize bot
 let bot;
 
-const initBot = () => {
+const initBot = async () => {
   if (!bot) {
     const BOT_TOKEN = process.env.BOT_TOKEN;
     if (!BOT_TOKEN) {
       throw new Error('BOT_TOKEN environment variable is required');
     }
     bot = new Bot(BOT_TOKEN);
+    
+    // Initialize the bot to avoid "Bot not initialized" error
+    try {
+      await bot.init();
+      console.log('🤖 Bot initialized successfully');
+    } catch (initError) {
+      console.error('❌ Bot initialization failed:', initError);
+      throw initError;
+    }
     
     // Game configuration
     const GAME_SHORT_NAME = 'buildergame'; // Updated to match BotFather assignment
@@ -179,7 +188,7 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    const bot = initBot();
+    const bot = await initBot();
     console.log('Bot initialized successfully');
     
     if (event.httpMethod === 'POST') {
