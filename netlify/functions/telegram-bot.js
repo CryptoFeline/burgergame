@@ -200,12 +200,83 @@ exports.handler = async (event, context) => {
     }
     
     if (event.httpMethod === 'GET') {
-      // Handle webhook setup
+      // Handle webhook setup and info
       const webhookUrl = `https://${event.headers.host}/.netlify/functions/telegram-bot`;
       
+      // Check if this is a bot info request
+      if (event.queryStringParameters?.action === 'botinfo') {
+        try {
+          const botInfo = await bot.api.getMe();
+          console.log('🤖 Bot info:', botInfo);
+          
+          return {
+            statusCode: 200,
+            headers: {
+              'Access-Control-Allow-Origin': '*',
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ 
+              bot_info: botInfo,
+              status: 'active'
+            })
+          };
+        } catch (botInfoError) {
+          console.error('❌ Failed to get bot info:', botInfoError);
+          return {
+            statusCode: 500,
+            headers: {
+              'Access-Control-Allow-Origin': '*',
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ 
+              error: 'Failed to get bot info',
+              details: botInfoError.message 
+            })
+          };
+        }
+      }
+      
+      // Check if this is a webhook info request
+      if (event.queryStringParameters?.action === 'info') {
+        try {
+          const webhookInfo = await bot.api.getWebhookInfo();
+          console.log('📊 Webhook info:', webhookInfo);
+          
+          return {
+            statusCode: 200,
+            headers: {
+              'Access-Control-Allow-Origin': '*',
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ 
+              webhook_info: webhookInfo,
+              expected_url: webhookUrl,
+              status: webhookInfo.url === webhookUrl ? 'correct' : 'mismatch'
+            })
+          };
+        } catch (webhookInfoError) {
+          console.error('❌ Failed to get webhook info:', webhookInfoError);
+          return {
+            statusCode: 500,
+            headers: {
+              'Access-Control-Allow-Origin': '*',
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ 
+              error: 'Failed to get webhook info',
+              details: webhookInfoError.message 
+            })
+          };
+        }
+      }
+      
+      // Default: Set up webhook
       try {
         await bot.api.setWebhook(webhookUrl);
         console.log(`✅ Webhook set to: ${webhookUrl}`);
+        
+        // Also get current webhook info for verification
+        const webhookInfo = await bot.api.getWebhookInfo();
         
         return {
           statusCode: 200,
@@ -215,7 +286,8 @@ exports.handler = async (event, context) => {
           },
           body: JSON.stringify({ 
             message: 'Webhook set successfully',
-            webhook_url: webhookUrl 
+            webhook_url: webhookUrl,
+            webhook_info: webhookInfo
           })
         };
       } catch (webhookError) {
