@@ -749,8 +749,8 @@ code {
 
 .debug-info {
   position: fixed;
-  top: 10px;
-  right: 10px;
+  top: -20px;
+  right: auto;
   background: rgba(0, 136, 204, 0.2);
   color: #0088cc;
   padding: 5px 10px;
@@ -767,8 +767,8 @@ code {
   }
   
   .debug-info {
-    top: 5px;
-    right: 5px;
+    top: -20px;
+    right: auto;
     padding: 3px 6px;
     font-size: 0.7em;
   }

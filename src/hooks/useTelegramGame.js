@@ -118,10 +118,21 @@ export const useTelegramGame = () => {
             }
 
         } catch (error) {
-            console.error('Failed to report score to Telegram:', error);
-            return false;
+            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                console.info('🔧 Local development mode - Telegram score reporting skipped');
+                console.info('📱 Deploy to test Telegram integration');
+                return true; // Return true to avoid error messages in local dev
+            } else {
+                console.error('Failed to report score to Telegram:', error);
+                return false;
+            }
         }
 
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            console.info('🔧 Local development mode - Telegram integration not available');
+            return true; // Return true for local dev
+        }
+        
         console.warn('No Telegram communication method available');
         return false;
     }, [isTelegramEnvironment]);

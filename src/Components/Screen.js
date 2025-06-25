@@ -29,7 +29,7 @@ const Screen = ({ score, startGame, isGameOver = false, telegramUser = null, isT
                             <h4 className="final-score-label">FINAL SCORE</h4>
                             <h3 className="final-score-value">{score}</h3>
                             {isTelegramEnvironment && (
-                                <p className="telegram-status">📱 Score saved to Telegram!</p>
+                                <p className="telegram-status">Score saved to Telegram!</p>
                             )}
                         </div>
                         <button className="play-again-btn" onClick={() => startGame()}>
@@ -48,8 +48,14 @@ const Screen = ({ score, startGame, isGameOver = false, telegramUser = null, isT
                         <button className="start-btn" onClick={() => startGame()}>
                             START GAME
                         </button>
-                        {process.env.NODE_ENV === 'development' && isTelegramEnvironment && (
-                            <p className="debug-info">🤖 Telegram Mode</p>
+                        {process.env.NODE_ENV === 'development' && (
+                            <div className="dev-info">
+                                {isTelegramEnvironment ? (
+                                    <p className="debug-info">🤖 Telegram Mode</p>
+                                ) : (
+                                    <p className="debug-info">🔧 Local Dev Mode<br/>Deploy to test Telegram</p>
+                                )}
+                            </div>
                         )}
                     </>
                 )}

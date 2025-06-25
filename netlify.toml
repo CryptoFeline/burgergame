@@ -1,0 +1,20 @@
+# Build configuration
+[build]
+  publish = "build"
+  functions = "netlify/functions"
+  command = "npm run build"
+
+# Environment variables (set these in Netlify dashboard)
+# BOT_TOKEN = "your_telegram_bot_token_here"
+
+# Function settings
+[functions]
+  node_bundler = "esbuild"
+
+# Headers for security
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
