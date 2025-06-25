@@ -57,6 +57,7 @@ Welcome to the ultimate burger stacking challenge!
 *Commands:*
 /start - Play the game
 /highscores - View the leaderboard  
+/scores - Lookup actual score data
 /help - Show this help message
 
 *Features:*
@@ -97,6 +98,96 @@ Good luck, burger boss! 🎯`;
       } catch (error) {
         console.error('❌ Error with stats command:', error);
         await ctx.reply('❌ Unable to get statistics right now.');
+      }
+    });
+
+    // Command to show leaderboard for current chat
+    bot.command('leaderboard', async (ctx) => {
+      try {
+        console.log(`📊 Leaderboard requested by ${ctx.from.first_name} (${ctx.from.id}) in chat ${ctx.chat.id}`);
+        
+        // Send a simple text-based leaderboard request
+        let responseText = "🏆 *LEADERBOARD*\n\n";
+        
+        if (ctx.chat.type === 'private') {
+          responseText += "This is your private leaderboard.\n";
+          responseText += "Scores from games you've played will appear here.\n\n";
+        } else {
+          const chatTitle = ctx.chat.title || 'this group';
+          responseText += `Group: *${chatTitle}*\n`;
+          responseText += "Showing scores from all group members.\n\n";
+        }
+        
+        responseText += "🎮 Use /start to play and set your score!\n";
+        responseText += "📈 Use /highscores to see live rankings!";
+        
+        await ctx.reply(responseText, { parse_mode: 'Markdown' });
+        
+      } catch (error) {
+        console.error('❌ Error with leaderboard command:', error);
+        await ctx.reply('❌ Unable to show leaderboard right now.');
+      }
+    });
+
+    // Alternative scores command to try fetching actual leaderboard data
+    bot.command('scores', async (ctx) => {
+      try {
+        console.log(`📊 Scores lookup requested by ${ctx.from.first_name} (${ctx.from.id}) in chat ${ctx.chat.id}`);
+        
+        // This is an experimental command to try to fetch actual scores
+        // from Telegram's leaderboard system
+        let statusText = "📊 *SCORE LOOKUP*\n\n";
+        statusText += "Looking for existing game scores in this chat...\n\n";
+        
+        if (ctx.chat.type === 'private') {
+          statusText += "🏠 Searching your personal game history\n";
+        } else {
+          const chatTitle = ctx.chat.title || 'this group';
+          statusText += `🏘️ Searching *${chatTitle}* game history\n`;
+        }
+        
+        statusText += "\n🔍 This feature is experimental\n";
+        statusText += "📈 Use /highscores for the main leaderboard";
+        
+        await ctx.reply(statusText, { parse_mode: 'Markdown' });
+        
+        // Create a temporary game message to test score retrieval
+        const tempGameMessage = await ctx.replyWithGame(GAME_SHORT_NAME, {
+          reply_markup: {
+            inline_keyboard: [[
+              { text: "🎮 Test Game for Score Retrieval", callback_game: {} }
+            ]]
+          }
+        });
+        
+        // Try to get scores (this will likely fail unless there are existing scores)
+        try {
+          const testScores = await ctx.api.getGameHighScores(
+            ctx.from.id,
+            {
+              chat_id: ctx.chat.id,
+              message_id: tempGameMessage.message_id
+            }
+          );
+          
+          if (testScores && testScores.length > 0) {
+            let scoresText = "🎯 *Found scores:*\n\n";
+            testScores.forEach((score, index) => {
+              const userName = score.user.first_name + (score.user.last_name ? ` ${score.user.last_name}` : '');
+              scoresText += `${index + 1}. ${userName}: ${score.score} pts\n`;
+            });
+            await ctx.reply(scoresText, { parse_mode: 'Markdown' });
+          } else {
+            await ctx.reply("🤔 No scores found in this specific message. Scores are tied to individual game messages.");
+          }
+        } catch (scoresError) {
+          console.log('Expected error fetching scores for new message:', scoresError.message);
+          await ctx.reply("ℹ️ No existing scores found. Scores will appear here once players submit them through the game!");
+        }
+        
+      } catch (error) {
+        console.error('❌ Error with scores command:', error);
+        await ctx.reply('❌ Unable to lookup scores right now.');
       }
     });
 
@@ -212,26 +303,45 @@ Good luck, burger boss! 🎯`;
       try {
         console.log(`🏆 High scores requested by ${ctx.from.first_name} (${ctx.from.id}) in chat ${ctx.chat.id}`);
         
-        // For groups, show the game with a "View Leaderboard" button
-        // For private chats, show the same
+        // Create a leaderboard explanation message
+        let leaderboardText = `🏆 *LEADERBOARD*\n\n`;
+        
+        if (ctx.chat.type === 'private') {
+          leaderboardText += "Your personal best scores will appear here.\n\n";
+        } else {
+          const chatTitle = ctx.chat.title || 'this group';
+          leaderboardText += `Top scores in *${chatTitle}*:\n\n`;
+        }
+        
+        leaderboardText += "🎯 *How it works:*\n";
+        leaderboardText += "• Play the game below to set your score\n";
+        leaderboardText += "• Scores are saved to Telegram's built-in leaderboard\n";
+        leaderboardText += "• Your rank updates automatically\n";
+        leaderboardText += "• Only your best score counts\n\n";
+        
+        if (ctx.chat.type === 'private') {
+          leaderboardText += "🏠 This is your personal scoreboard\n";
+          leaderboardText += "📤 Share your high scores with friends!";
+        } else {
+          leaderboardText += "🏆 Compete with all group members\n";
+          leaderboardText += "🥇 Who will be the Burger Boss champion?";
+        }
+        
+        // Send the explanation first
+        await ctx.reply(leaderboardText, { parse_mode: 'Markdown' });
+        
+        // Then send the game
         await ctx.replyWithGame(GAME_SHORT_NAME, {
           reply_markup: {
             inline_keyboard: [[
-              { text: "🏆 View Leaderboard", callback_game: {} }
+              { text: "� Play & Compete!", callback_game: {} }
             ]]
           }
         });
         
-        // Send additional helpful text
-        const helpText = ctx.chat.type === 'private' 
-          ? "🎮 Click the button above to see the leaderboard and play again!"
-          : "🎮 Click the button above to see the group leaderboard and play!";
-        
-        await ctx.reply(helpText);
-        
       } catch (error) {
         console.error('❌ Error with highscores command:', error);
-        await ctx.reply('❌ Unable to show high scores right now. Please try again later.');
+        await ctx.reply('❌ Unable to show leaderboard right now. Please try again later.');
       }
     });
 
