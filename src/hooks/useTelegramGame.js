@@ -91,17 +91,22 @@ export const useTelegramGame = () => {
                 const tg = window.Telegram.WebApp;
                 console.log('Reporting score via Telegram Web App:', score);
                 
-                // Send score data back to the bot
+                // Send score data back to the bot via web app data
                 tg.sendData(JSON.stringify({ 
                     type: 'game_score', 
                     score: score,
                     timestamp: Date.now()
                 }));
                 
-                // Close the web app after reporting score
+                // Show confirmation and close after a delay
+                if (score > 0) {
+                    tg.showAlert(`🎉 Great job! Score: ${score}`);
+                }
+                
+                // Don't close immediately - let user see the result
                 setTimeout(() => {
                     tg.close();
-                }, 1000);
+                }, 2000);
                 
                 return true;
             }

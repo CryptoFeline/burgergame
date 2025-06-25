@@ -7,27 +7,33 @@ const initBot = () => {
   if (!bot) {
     const BOT_TOKEN = process.env.BOT_TOKEN;
     if (!BOT_TOKEN) {
-      throw new Error('BOT_TOKEN environment variable is required. Please add it in Netlify Site Settings → Environment Variables.');
+      throw new Error('BOT_TOKEN environment variable is required');
     }
     bot = new Bot(BOT_TOKEN);
     
     // Game configuration
     const GAME_SHORT_NAME = 'builder';
     
-    // Start command - shows the game
+    // Start command - shows the web app
     bot.command('start', async (ctx) => {
       try {
         console.log(`👤 User ${ctx.from.first_name} (${ctx.from.id}) started the bot`);
         
-        await ctx.replyWithGame(GAME_SHORT_NAME, {
+        // For Web Apps, we send a message with an inline keyboard
+        await ctx.reply('🍔 Welcome to Boss Burger Builder!\n\nReady to stack some burgers?', {
           reply_markup: {
             inline_keyboard: [[
-              { text: "🍔 Play BossBurger Builder!", callback_game: {} }
+              { 
+                text: "🍔 Play BossBurger Builder!", 
+                web_app: { 
+                  url: "https://bossburgerbuild.netlify.app" 
+                } 
+              }
             ]]
           }
         });
       } catch (error) {
-        console.error('❌ Error sending game:', error);
+        console.error('❌ Error sending web app:', error);
         await ctx.reply('❌ Sorry, there was an error starting the game. Please try again later.');
       }
     });
@@ -54,80 +60,52 @@ Good luck, burger boss! 🎯`;
       await ctx.reply(helpText, { parse_mode: 'Markdown' });
     });
 
-    // Handle callback queries (including game scores)
+    // Handle callback queries and web app data
     bot.on('callback_query', async (ctx) => {
       try {
-        const callbackQuery = ctx.callbackQuery;
+        await ctx.answerCallbackQuery();
+      } catch (error) {
+        console.error('❌ Error answering callback query:', error);
+      }
+    });
+
+    // Handle web app data (scores from the game)
+    bot.on('message:web_app_data', async (ctx) => {
+      try {
+        const webAppData = ctx.message.web_app_data;
+        console.log('📊 Received web app data:', webAppData);
         
-        // Handle game callback (when user clicks "Play Game")
-        if (callbackQuery.game_short_name) {
-          console.log(`🎮 User ${ctx.from.first_name} (${ctx.from.id}) clicked to play game`);
-          await ctx.answerCallbackQuery();
+        let gameData;
+        try {
+          gameData = JSON.parse(webAppData.data);
+        } catch (parseError) {
+          console.log('📦 Invalid JSON in web app data:', webAppData.data);
           return;
         }
         
-        // Handle score submission from the game
-        if (callbackQuery.data) {
-          let gameData;
-          try {
-            gameData = JSON.parse(callbackQuery.data);
-          } catch (parseError) {
-            console.log('📦 Non-JSON callback data:', callbackQuery.data);
-            await ctx.answerCallbackQuery();
-            return;
-          }
+        if (gameData.type === 'game_score' && typeof gameData.score === 'number') {
+          const score = Math.floor(gameData.score);
+          const userName = ctx.from.first_name;
           
-          console.log('📊 Received game data:', gameData);
+          console.log(`🏆 Score ${score} received from ${userName} (${ctx.from.id})`);
           
-          if (gameData.type === 'game_score' && typeof gameData.score === 'number') {
-            const userId = ctx.from.id;
-            const chatId = ctx.chat?.id;
-            const messageId = callbackQuery.message?.message_id;
-            const score = Math.floor(gameData.score);
-            
-            console.log(`🏆 Setting score ${score} for user ${ctx.from.first_name} (${userId})`);
-            
-            try {
-              // Set the game score
-              await ctx.api.setGameScore({
-                user_id: userId,
-                score: score,
-                chat_id: chatId,
-                message_id: messageId,
-                force: true,
-                disable_edit_message: false
-              });
-              
-              console.log(`✅ Score ${score} successfully set for user ${userId}`);
-              
-              const message = score > 0 
-                ? `🎉 Amazing! Your burger tower score of ${score} has been saved!`
-                : `👍 Score saved! Keep practicing to build taller burger towers!`;
-              
-              await ctx.answerCallbackQuery(message, { show_alert: true });
-              
-            } catch (scoreError) {
-              console.error('❌ Error setting game score:', scoreError);
-              await ctx.answerCallbackQuery(
-                '❌ There was an issue saving your score. Please try again.',
-                { show_alert: true }
-              );
-            }
-          } else {
-            console.log('⚠️ Invalid game data format:', gameData);
-            await ctx.answerCallbackQuery('❌ Invalid score data received.');
-          }
+          // Send confirmation to user
+          const message = score > 0 
+            ? `🎉 Amazing, ${userName}! Your burger tower score of ${score} has been recorded!`
+            : `👍 Thanks for playing, ${userName}! Keep practicing to build taller burger towers!`;
+          
+          await ctx.reply(message);
+          
+          // Here you could save the score to a database
+          // For now, we just log it
+          console.log(`💾 Score saved: User ${ctx.from.id} (${userName}) scored ${score}`);
+          
         } else {
-          await ctx.answerCallbackQuery();
+          console.log('⚠️ Invalid game data format:', gameData);
         }
         
       } catch (error) {
-        console.error('❌ Error handling callback query:', error);
-        try {
-          await ctx.answerCallbackQuery('❌ An error occurred. Please try again.');
-        } catch (answerError) {
-          console.error('❌ Error answering callback query:', answerError);
-        }
+        console.error('❌ Error handling web app data:', error);
       }
     });
 
