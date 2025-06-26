@@ -40,6 +40,63 @@ exports.handler = async (event, context) => {
       try {
         console.log(`👤 User ${ctx.from.first_name} (${ctx.from.id}) started the bot`);
         
+        // Check if this is a score submission from the game
+        const commandText = ctx.message.text;
+        const scoreMatch = commandText.match(/\/start score_(\d+)/);
+        
+        if (scoreMatch) {
+          const score = parseInt(scoreMatch[1]);
+          console.log(`🎯 Score submission via start command: ${score} from user ${ctx.from.first_name} (${ctx.from.id})`);
+          
+          // Create a game message and set the score
+          const gameMessage = await ctx.replyWithGame(GAME_SHORT_NAME, {
+            reply_markup: {
+              inline_keyboard: [
+                [
+                  { text: "🎮 Play Again!", callback_game: {} }
+                ],
+                [
+                  { text: "🏆 View Leaderboard", callback_data: "show_leaderboard" },
+                  { text: "📤 Share Score", switch_inline_query: `I scored ${score} points in Boss Burger Builder! 🍔` }
+                ]
+              ]
+            }
+          });
+          
+          // Submit the score
+          try {
+            await ctx.api.setGameScore({
+              user_id: ctx.from.id,
+              score: score,
+              chat_id: ctx.chat.id,
+              message_id: gameMessage.message_id,
+              force: true,
+              disable_edit_message: false
+            });
+            
+            let message = `🏆 Score ${score} submitted successfully!`;
+            if (score === 0) {
+              message = `🎯 Score submitted! Practice makes perfect - keep building those burger towers!`;
+            } else if (score < 10) {
+              message = `🎯 Score ${score} submitted! Not bad for a start. Can you build an even taller tower?`;
+            } else if (score < 25) {
+              message = `🏆 Great job! Score ${score} has been added to the leaderboard!`;
+            } else if (score < 50) {
+              message = `🌟 Amazing! ${score} points - you're becoming a burger stacking master!`;
+            } else {
+              message = `🔥 INCREDIBLE! ${score} points is absolutely phenomenal! You're a true Burger Boss!`;
+            }
+            
+            await ctx.reply(message);
+            return;
+            
+          } catch (scoreError) {
+            console.error('❌ Error setting score from start command:', scoreError);
+            await ctx.reply('❌ Error submitting score. Please try the /submitscore command instead.');
+          }
+        }
+        
+        // Regular start command
         const welcomeText = `
 🍔 *Welcome to Boss Burger Builder!*
 
@@ -96,6 +153,7 @@ Welcome to the ultimate burger stacking challenge!
 /start - Play the game
 /highscores - View the leaderboard  
 /scores - Lookup actual score data
+/advanced_scores - Detailed leaderboard with statistics
 /submitscore [score] - Manually submit a score
 /help - Show this help message
 
@@ -104,6 +162,7 @@ Welcome to the ultimate burger stacking challenge!
 🎮 Perfect stacking mechanics with physics
 🎵 Immersive sound effects and music
 📱 Works great on mobile and desktop
+🔬 Advanced score analytics using Telegram's API
 
 Good luck, burger boss! 🎯`;
 
@@ -311,6 +370,56 @@ Good luck, Burger Boss! 🍔`;
             return;
           }
           
+          if (callbackQuery.data === 'refresh_advanced_scores') {
+            try {
+              const messageId = callbackQuery.message?.message_id;
+              const chatId = callbackQuery.message?.chat?.id;
+              
+              if (!messageId || !chatId) {
+                await ctx.answerCallbackQuery({
+                  text: '❌ Unable to refresh - invalid message data'
+                });
+                return;
+              }
+              
+              // Call getGameHighScores for the current message
+              const highScoresResult = await ctx.api.raw.getGameHighScores({
+                user_id: ctx.from.id,
+                chat_id: chatId,
+                message_id: messageId
+              });
+              
+              console.log('🔄 Refreshed advanced scores:', JSON.stringify(highScoresResult, null, 2));
+              
+              let refreshText = "🔄 *Advanced Scores Refreshed*\n\n";
+              
+              if (highScoresResult.result && highScoresResult.result.length > 0) {
+                const playerCount = highScoresResult.result.length;
+                const topScore = highScoresResult.result[0]?.score || 0;
+                const topPlayer = highScoresResult.result[0]?.user?.first_name || 'Unknown';
+                
+                refreshText += `👑 Leader: ${topPlayer} (${topScore} pts)\n`;
+                refreshText += `🏆 Total players: ${playerCount}\n`;
+                refreshText += `📊 Data updated from Telegram API`;
+              } else {
+                refreshText += "📭 No scores available yet.\n";
+                refreshText += "🎮 Play the game to set the first score!";
+              }
+              
+              await ctx.answerCallbackQuery({
+                text: refreshText,
+                show_alert: true
+              });
+              
+            } catch (refreshError) {
+              console.error('❌ Error refreshing advanced scores:', refreshError);
+              await ctx.answerCallbackQuery({
+                text: '❌ Unable to refresh scores data'
+              });
+            }
+            return;
+          }
+          
           let gameData;
           try {
             gameData = JSON.parse(callbackQuery.data);
@@ -473,13 +582,126 @@ Good luck, Burger Boss! 🍔`;
         
         statusText += "\n💡 Scores appear automatically in game messages after players submit them.\n";
         statusText += "🎮 Use /start to play and submit scores\n";
-        statusText += "� Use /highscores to see the leaderboard";
+        statusText += "🏆 Use /highscores to see the leaderboard";
         
         await ctx.reply(statusText, { parse_mode: 'Markdown' });
         
       } catch (error) {
         console.error('❌ Error with scores command:', error);
         await ctx.reply('❌ Unable to lookup scores right now.');
+      }
+    });
+
+    // Advanced scores command using lower-level API for detailed leaderboard information
+    bot.command('advanced_scores', async (ctx) => {
+      try {
+        console.log(`🔍 Advanced scores lookup requested by ${ctx.from.first_name} (${ctx.from.id}) in chat ${ctx.chat.id}`);
+        
+        // First, create a game message to get a message_id for the API call
+        const gameMessage = await ctx.replyWithGame(GAME_SHORT_NAME, {
+          reply_markup: {
+            inline_keyboard: [
+              [
+                { text: "🎮 Play Game", callback_game: {} }
+              ],
+              [
+                { text: "🔄 Refresh Advanced Scores", callback_data: "refresh_advanced_scores" }
+              ]
+            ]
+          }
+        });
+        
+        // Use the lower-level getGameHighScores API method
+        try {
+          console.log(`🔍 Calling getGameHighScores for chat ${ctx.chat.id}, message ${gameMessage.message_id}, user ${ctx.from.id}`);
+          
+          const highScoresResult = await ctx.api.raw.getGameHighScores({
+            user_id: ctx.from.id,
+            chat_id: ctx.chat.id,
+            message_id: gameMessage.message_id
+          });
+          
+          console.log('📊 Raw high scores result:', JSON.stringify(highScoresResult, null, 2));
+          
+          // Format the advanced scores information
+          let advancedText = "🔬 *ADVANCED LEADERBOARD*\n\n";
+          
+          if (highScoresResult.result && highScoresResult.result.length > 0) {
+            advancedText += "📈 *Detailed Score Data:*\n\n";
+            
+            highScoresResult.result.forEach((scoreEntry, index) => {
+              const position = index + 1;
+              const user = scoreEntry.user;
+              const score = scoreEntry.score;
+              
+              // Format user name
+              let userName = user.first_name || 'Unknown';
+              if (user.last_name) {
+                userName += ` ${user.last_name}`;
+              }
+              if (user.username) {
+                userName += ` (@${user.username})`;
+              }
+              
+              // Add ranking emoji
+              let rankEmoji = '🥇';
+              if (position === 2) rankEmoji = '🥈';
+              else if (position === 3) rankEmoji = '🥉';
+              else if (position <= 10) rankEmoji = '🏆';
+              else rankEmoji = '📊';
+              
+              advancedText += `${rankEmoji} *#${position}* - ${userName}\n`;
+              advancedText += `   Score: \`${score}\` points\n`;
+              advancedText += `   User ID: \`${user.id}\`\n\n`;
+            });
+            
+            advancedText += `📊 Total players: ${highScoresResult.result.length}\n`;
+            
+            // Add statistics
+            const scores = highScoresResult.result.map(entry => entry.score);
+            const maxScore = Math.max(...scores);
+            const minScore = Math.min(...scores);
+            const avgScore = (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1);
+            
+            advancedText += `\n📈 *Statistics:*\n`;
+            advancedText += `• Highest: ${maxScore} points\n`;
+            advancedText += `• Lowest: ${minScore} points\n`;
+            advancedText += `• Average: ${avgScore} points\n`;
+            
+          } else {
+            advancedText += "📭 No scores found for this game.\n\n";
+            advancedText += "🎮 Play the game above to be the first on the leaderboard!\n";
+          }
+          
+          advancedText += "\n🔬 This data is retrieved using Telegram's `getGameHighScores` API method.";
+          
+          await ctx.reply(advancedText, { parse_mode: 'Markdown' });
+          
+        } catch (apiError) {
+          console.error('❌ Error calling getGameHighScores:', apiError);
+          
+          let errorText = "❌ *Advanced Scores Unavailable*\n\n";
+          
+          if (apiError.error_code === 400) {
+            errorText += "🔍 No score data available yet.\n";
+            errorText += "This could mean:\n";
+            errorText += "• No scores have been submitted\n";
+            errorText += "• The game message is too old\n";
+            errorText += "• API parameters need adjustment\n\n";
+          } else if (apiError.error_code === 403) {
+            errorText += "🚫 Permission denied accessing score data.\n\n";
+          } else {
+            errorText += `🔧 API Error: ${apiError.description || 'Unknown error'}\n\n`;
+          }
+          
+          errorText += "💡 Try using `/highscores` for the standard leaderboard.";
+          
+          await ctx.reply(errorText, { parse_mode: 'Markdown' });
+        }
+        
+      } catch (error) {
+        console.error('❌ Error with advanced_scores command:', error);
+        await ctx.reply('❌ Unable to retrieve advanced scores right now.');
       }
     });
 

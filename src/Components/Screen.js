@@ -48,6 +48,20 @@ const Screen = ({ score, startGame, isGameOver = false, telegramUser = null, isT
                                 Play Again
                             </button>
                             
+                            {isTelegramEnvironment && score > 0 && (
+                                <button className="submit-score-btn" onClick={() => {
+                                    // Create a bot link with the score
+                                    const botUrl = `https://t.me/bossburger_bot?start=score_${score}`;
+                                    if (window.Telegram?.WebApp) {
+                                        window.Telegram.WebApp.openTelegramLink(botUrl);
+                                    } else {
+                                        window.open(botUrl, '_blank');
+                                    }
+                                }}>
+                                    🏆 Submit to Leaderboard
+                                </button>
+                            )}
+                            
                             {isTelegramEnvironment && shareScore && score > 0 && (
                                 <button className="share-btn" onClick={handleShareScore}>
                                     📤 Share Score
