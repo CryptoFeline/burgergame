@@ -206,12 +206,16 @@ Good luck, burger boss! 🎯`;
         
         // Submit the score to this game message
         try {
-          await ctx.api.setGameScore(ctx.from.id, score, {
+          const setScoreResult = await ctx.api.setGameScore({
+            user_id: ctx.from.id,
+            score: score,
             chat_id: ctx.chat.id,
             message_id: gameMessage.message_id,
             force: true,
             disable_edit_message: false
           });
+          
+          console.log(`✅ Manual score ${score} set successfully for user ${ctx.from.id}. Result:`, setScoreResult);
           
           let message = `🏆 Score ${score} submitted successfully!`;
           if (score === 0) {
@@ -327,7 +331,9 @@ Good luck, Burger Boss! 🍔`;
             try {
               // Set the game score using Telegram's built-in leaderboard
               // According to the documentation, this will automatically update the game message with high scores
-              const setScoreResult = await ctx.api.setGameScore(userId, score, {
+              const setScoreResult = await ctx.api.setGameScore({
+                user_id: userId,
+                score: score,
                 chat_id: chatId,
                 message_id: messageId,
                 force: true, // Allow score updates even if lower
