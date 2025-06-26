@@ -260,7 +260,10 @@ Good luck, burger boss! 🎯`;
           // Handle special button callbacks
           if (callbackQuery.data === 'show_leaderboard') {
             // Show a helpful message about the leaderboard
-            await ctx.answerCallbackQuery('🏆 Leaderboard will appear here after players submit scores!', { show_alert: true });
+            await ctx.answerCallbackQuery({
+              text: '🏆 Leaderboard will appear here after players submit scores!',
+              show_alert: true
+            });
             return;
           }
           
@@ -295,7 +298,9 @@ Good luck, Burger Boss! 🍔`;
           }
           
           if (callbackQuery.data === 'refresh_leaderboard') {
-            await ctx.answerCallbackQuery('🔄 Leaderboard refreshed!');
+            await ctx.answerCallbackQuery({
+              text: '🔄 Leaderboard refreshed!'
+            });
             // The game message itself will show updated scores automatically
             return;
           }
@@ -352,7 +357,10 @@ Good luck, Burger Boss! 🍔`;
                 message += ` The game message has been updated with the latest leaderboard!`;
               }
               
-              await ctx.answerCallbackQuery(message, { show_alert: true });
+              await ctx.answerCallbackQuery({
+                text: message,
+                show_alert: true
+              });
               
             } catch (scoreError) {
               console.error('❌ Error setting game score:', scoreError);
@@ -367,11 +375,16 @@ Good luck, Burger Boss! 🍔`;
               }
               
               // Still answer the callback query to prevent timeout
-              await ctx.answerCallbackQuery(errorMessage, { show_alert: true });
+              await ctx.answerCallbackQuery({
+                text: errorMessage,
+                show_alert: true
+              });
             }
           } else {
             console.log('📦 Invalid game data structure:', gameData);
-            await ctx.answerCallbackQuery('❌ Invalid score data received.');
+            await ctx.answerCallbackQuery({
+              text: '❌ Invalid score data received.'
+            });
           }
         } else {
           console.log('📦 Unknown callback query type');
@@ -383,7 +396,9 @@ Good luck, Burger Boss! 🍔`;
         
         // Always answer the callback query to prevent timeout
         try {
-          await ctx.answerCallbackQuery('❌ An error occurred. Please try again.');
+          await ctx.answerCallbackQuery({
+            text: '❌ An error occurred. Please try again.'
+          });
         } catch (answerError) {
           console.error('❌ Error answering callback query:', answerError);
         }
