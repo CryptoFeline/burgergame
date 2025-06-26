@@ -18,8 +18,9 @@ exports.handler = async (event, context) => {
     
     console.log('Environment check - BOT_TOKEN exists:', !!BOT_TOKEN);
     
-    // Create bot instance
+    // Create bot instance and initialize it
     const bot = new Bot(BOT_TOKEN);
+    await bot.init(); // Initialize the bot before using it
     console.log('🤖 Bot initialized successfully');
     
     // Handle GET requests (webhook setup)
