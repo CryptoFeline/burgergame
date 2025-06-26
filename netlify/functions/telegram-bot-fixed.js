@@ -54,21 +54,12 @@ Ready to become the ultimate Burger Boss? 🏆`;
 
         await ctx.reply(welcomeText, { parse_mode: 'Markdown' });
         
-        // Send the game with multiple buttons (first button must launch the game)
+        // Send the game
         await ctx.replyWithGame(GAME_SHORT_NAME, {
           reply_markup: {
-            inline_keyboard: [
-              [
-                { text: "🍔 Play BossBurger Builder!", callback_game: {} }
-              ],
-              [
-                { text: "🏆 View Leaderboard", callback_data: "show_leaderboard" },
-                { text: "❓ How to Play", callback_data: "show_rules" }
-              ],
-              [
-                { text: "📤 Share Game", switch_inline_query: "Check out this awesome burger stacking game! 🍔" }
-              ]
-            ]
+            inline_keyboard: [[
+              { text: "🍔 Play BossBurger Builder!", callback_game: {} }
+            ]]
           }
         });
         
@@ -184,56 +175,6 @@ Good luck, burger boss! 🎯`;
         
         // Handle score submission from the game
         if (callbackQuery.data) {
-          // Handle special button callbacks
-          if (callbackQuery.data === 'show_leaderboard') {
-            await ctx.answerCallbackQuery();
-            // Trigger the highscores command
-            return await bot.handleUpdate({
-              message: {
-                text: '/highscores',
-                chat: ctx.chat,
-                from: ctx.from,
-                message_id: Date.now()
-              }
-            });
-          }
-          
-          if (callbackQuery.data === 'show_rules') {
-            const rulesText = `
-🍔 *How to Play Boss Burger Builder*
-
-🎯 *Objective:* Build the tallest burger tower possible!
-
-🎮 *Controls:*
-• Tap anywhere to drop ingredients
-• Time your taps perfectly to stack ingredients
-• Each perfect stack increases your score
-
-🏆 *Scoring:*
-• Perfect stacks = Maximum points
-• Near misses = Partial points  
-• Complete misses = Lost life
-• 3 lives total
-
-💡 *Pro Tips:*
-• Watch the swinging ingredient carefully
-• Time your tap when it's perfectly aligned
-• Build higher for bigger scores
-• Practice makes perfect!
-
-Good luck, Burger Boss! 🍔`;
-
-            await ctx.answerCallbackQuery();
-            await ctx.reply(rulesText, { parse_mode: 'Markdown' });
-            return;
-          }
-          
-          if (callbackQuery.data === 'refresh_leaderboard') {
-            await ctx.answerCallbackQuery('🔄 Leaderboard refreshed!');
-            // The game message itself will show updated scores automatically
-            return;
-          }
-          
           let gameData;
           try {
             gameData = JSON.parse(callbackQuery.data);
@@ -339,10 +280,6 @@ Good luck, Burger Boss! 🍔`;
             inline_keyboard: [
               [
                 { text: "🎮 Play & Set Your Score!", callback_game: {} }
-              ],
-              [
-                { text: "🔄 Refresh", callback_data: "refresh_leaderboard" },
-                { text: "📤 Share", switch_inline_query: "Join me in Boss Burger Builder! 🍔" }
               ]
             ]
           }
