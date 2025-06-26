@@ -15,11 +15,13 @@ A 3D physics-based burger stacking game with full Telegram integration, native l
 ## 🤖 Telegram Bot Features
 
 - **Native Leaderboards**: Uses Telegram's built-in game leaderboard system
+- **Advanced Analytics**: Detailed score statistics using `getGameHighScores` API
 - **Multi-Chat Support**: Separate leaderboards for groups and private chats
 - **Score Sharing**: Share achievements via inline queries
-- **Multiple Commands**: `/start`, `/help`, `/highscores`, `/stats`, `/scores`
+- **Multiple Commands**: `/start`, `/help`, `/highscores`, `/advanced_scores`, `/stats`, `/scores`
 - **Enhanced Game Messages**: Multiple action buttons and sharing options
 - **Automatic Updates**: Real-time leaderboard updates via Telegram's API
+- **Comprehensive Analytics**: Player statistics, rankings, and score analytics
 
 ## 🛠️ Technologies Used
 
@@ -53,10 +55,12 @@ A 3D physics-based burger stacking game with full Telegram integration, native l
 ## 🏆 Telegram Bot Commands
 
 - `/start` - Launch the game
-- `/help` - Show game instructions
-- `/highscores` - View leaderboard for current chat
+- `/help` - Show game instructions  
+- `/highscores` - View standard leaderboard for current chat
+- `/advanced_scores` - View detailed analytics with statistics
 - `/stats` - View game statistics
 - `/scores` - Lookup detailed score data
+- `/submitscore [score]` - Manually submit a score (for testing)
 
 ## 🏗️ Architecture
 
@@ -120,8 +124,9 @@ Built with ❤️ for the Telegram Games platform
 ## 📚 Additional Documentation
 
 - **[Complete Implementation Guide](IMPLEMENTATION_COMPLETE.md)** - Detailed technical documentation
-- **[Testing Guide](TESTING_GUIDE.md)** - Comprehensive testing checklist  
+- **[Testing Guide](TESTING_GUIDE.md)** - Comprehensive testing checklist including advanced features
 - **[Telegram Games API Guide](TELEGRAM_GAMES_API.md)** - API implementation details
+- **[Advanced Leaderboard Guide](ADVANCED_LEADERBOARD.md)** - Detailed analytics features
 - **[Audio System Documentation](public/audio/README.md)** - Audio features and integration
 
 *Last updated: June 2025*

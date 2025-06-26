@@ -123,6 +123,75 @@ Test these in Telegram:
 - **Invalid Game Data** - Graceful error handling with user notification
 - **Browser Audio Restrictions** - Proper autoplay policy compliance
 
+## Advanced Leaderboard Testing
+
+The bot now includes advanced leaderboard features using Telegram's `getGameHighScores` API. Here's how to test them:
+
+### Basic Testing Steps
+
+1. **Test Standard Leaderboard**
+   ```
+   /start  # Play the game and submit a score
+   /highscores  # View standard leaderboard
+   ```
+
+2. **Test Advanced Leaderboard**
+   ```
+   /advanced_scores  # View detailed analytics
+   ```
+   - Should show comprehensive player data
+   - Includes score statistics (min, max, average)
+   - Shows user details and rankings
+   - Provides refresh button for real-time updates
+
+3. **Test Manual Score Submission**
+   ```
+   /submitscore 25  # Submit a test score
+   /advanced_scores  # Check if it appears in detailed view
+   ```
+
+### Advanced Features Testing
+
+1. **Refresh Functionality**
+   - Use `/advanced_scores`
+   - Click the "🔄 Refresh Advanced Scores" button
+   - Should show updated data in popup alert
+
+2. **Error Handling**
+   - Try `/advanced_scores` before any scores are submitted
+   - Should show helpful "No scores found" message
+
+3. **Multi-User Testing**
+   - Have multiple users submit different scores
+   - Check ranking order and statistics accuracy
+   - Verify user information display
+
+### Expected API Response Format
+
+The `getGameHighScores` should return:
+```json
+{
+  "ok": true,
+  "result": [
+    {
+      "position": 1,
+      "user": {
+        "id": 123456789,
+        "first_name": "UserName",
+        "username": "username"
+      },
+      "score": 150
+    }
+  ]
+}
+```
+
+### Troubleshooting
+
+- **"No scores found"**: Normal when no scores submitted yet
+- **API errors**: Check bot permissions and message validity
+- **Missing statistics**: Ensure multiple scores for meaningful analytics
+
 ## 🔧 Troubleshooting Guide
 
 If issues occur (rare):
