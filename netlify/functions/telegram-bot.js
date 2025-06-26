@@ -206,6 +206,8 @@ Good luck, burger boss! 🎯`;
         
         // Submit the score to this game message
         try {
+          console.log(`🎯 Attempting to set score ${score} for user ${ctx.from.id} in chat ${ctx.chat.id}, message ${gameMessage.message_id}`);
+          
           const setScoreResult = await ctx.api.setGameScore({
             user_id: ctx.from.id,
             score: score,
