@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Telegram Bot Score Test</title>
+</head>
+<body>
+    <h1>Score Submission Test</h1>
+    <p>Testing score submission to Telegram bot...</p>
+    
+    <button onclick="testScoreSubmission()">Test Score Submission</button>
+    <button onclick="testCallbackQuery()">Test Callback Query</button>
+    
+    <div id="logs" style="margin-top: 20px; font-family: monospace; background: #f0f0f0; padding: 10px;"></div>
+    
+    <script>
+        function log(message) {
+            const logs = document.getElementById('logs');
+            logs.innerHTML += new Date().toLocaleTimeString() + ': ' + message + '<br>';
+            console.log(message);
+        }
+        
+        function testScoreSubmission() {
+            const score = 42;
+            log('Testing score submission with score: ' + score);
+            
+            // Test if we're in Telegram
+            log('window.parent === window: ' + (window.parent === window));
+            log('window.TelegramGameProxy exists: ' + (typeof window.TelegramGameProxy !== 'undefined'));
+            
+            if (window.parent !== window) {
+                log('Sending score via postMessage...');
+                
+                const scoreData = {
+                    type: 'game_score',
+                    score: score,
+                    timestamp: Date.now()
+                };
+                
+                // Try multiple formats
+                window.parent.postMessage(scoreData, '*');
+                window.parent.postMessage(JSON.stringify(scoreData), '*');
+                window.parent.postMessage({eventType: 'game_score', eventData: scoreData}, '*');
+                
+                log('Score data sent in multiple formats');
+            } else {
+                log('Not in iframe - cannot send score');
+            }
+        }
+        
+        function testCallbackQuery() {
+            log('Testing callback query simulation...');
+            
+            if (window.parent !== window) {
+                const callbackData = {
+                    callback_query: {
+                        id: 'test_' + Date.now(),
+                        data: JSON.stringify({
+                            type: 'game_score',
+                            score: 123,
+                            timestamp: Date.now()
+                        }),
+                        game_short_name: 'buildergame'
+                    }
+                };
+                
+                window.parent.postMessage(callbackData, '*');
+                log('Callback query simulation sent');
+            } else {
+                log('Not in iframe - cannot send callback query');
+            }
+        }
+        
+        // Listen for responses
+        window.addEventListener('message', function(event) {
+            log('Received message: ' + JSON.stringify(event.data));
+        });
+        
+        log('Test page loaded');
+        log('URL params: ' + window.location.search);
+        log('Hash params: ' + window.location.hash);
+    </script>
+</body>
+</html>

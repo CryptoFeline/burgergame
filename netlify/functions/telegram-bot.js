@@ -96,6 +96,7 @@ Welcome to the ultimate burger stacking challenge!
 /start - Play the game
 /highscores - View the leaderboard  
 /scores - Lookup actual score data
+/submitscore [score] - Manually submit a score
 /help - Show this help message
 
 *Features:*
@@ -167,6 +168,77 @@ Good luck, burger boss! 🎯`;
       }
     });
 
+    // Command to submit score manually
+    bot.command('submitscore', async (ctx) => {
+      try {
+        console.log(`🎯 Manual score submission requested by ${ctx.from.first_name} (${ctx.from.id})`);
+        
+        // Extract score from command text
+        const commandText = ctx.message.text;
+        const scoreMatch = commandText.match(/\/submitscore\s+(\d+)/);
+        
+        if (!scoreMatch) {
+          await ctx.reply('🎯 *Submit Your Score*\n\nUsage: `/submitscore [your_score]`\n\nExample: `/submitscore 25`\n\nThis will submit your score to the leaderboard!', { parse_mode: 'Markdown' });
+          return;
+        }
+        
+        const score = parseInt(scoreMatch[1]);
+        
+        if (score < 0 || score > 10000) {
+          await ctx.reply('❌ Invalid score. Please enter a score between 0 and 10000.');
+          return;
+        }
+        
+        // Create a game message and immediately set the score
+        const gameMessage = await ctx.replyWithGame(GAME_SHORT_NAME, {
+          reply_markup: {
+            inline_keyboard: [
+              [
+                { text: "🎮 Play Again!", callback_game: {} }
+              ],
+              [
+                { text: "🏆 View Leaderboard", callback_data: "show_leaderboard" },
+                { text: "📤 Share", switch_inline_query: "I scored " + score + " points in Boss Burger Builder! 🍔" }
+              ]
+            ]
+          }
+        });
+        
+        // Submit the score to this game message
+        try {
+          await ctx.api.setGameScore(ctx.from.id, score, {
+            chat_id: ctx.chat.id,
+            message_id: gameMessage.message_id,
+            force: true,
+            disable_edit_message: false
+          });
+          
+          let message = `🏆 Score ${score} submitted successfully!`;
+          if (score === 0) {
+            message = `🎯 Score submitted! Practice makes perfect - keep building those burger towers!`;
+          } else if (score < 10) {
+            message = `🎯 Score ${score} submitted! Not bad for a start. Can you build an even taller tower?`;
+          } else if (score < 25) {
+            message = `🏆 Great job! Score ${score} has been added to the leaderboard!`;
+          } else if (score < 50) {
+            message = `🌟 Amazing! ${score} points - you're becoming a burger stacking master!`;
+          } else {
+            message = `🔥 INCREDIBLE! ${score} points is absolutely phenomenal! You're a true Burger Boss!`;
+          }
+          
+          await ctx.reply(message);
+          
+        } catch (scoreError) {
+          console.error('❌ Error setting manual score:', scoreError);
+          await ctx.reply('❌ Error submitting score. Please try again.');
+        }
+        
+      } catch (error) {
+        console.error('❌ Error with submitscore command:', error);
+        await ctx.reply('❌ Unable to submit score right now.');
+      }
+    });
+
     // Handle callback queries (including game scores)
     bot.on('callback_query', async (ctx) => {
       try {
@@ -187,16 +259,9 @@ Good luck, burger boss! 🎯`;
         if (callbackQuery.data) {
           // Handle special button callbacks
           if (callbackQuery.data === 'show_leaderboard') {
-            await ctx.answerCallbackQuery();
-            // Trigger the highscores command
-            return await bot.handleUpdate({
-              message: {
-                text: '/highscores',
-                chat: ctx.chat,
-                from: ctx.from,
-                message_id: Date.now()
-              }
-            });
+            // Show a helpful message about the leaderboard
+            await ctx.answerCallbackQuery('🏆 Leaderboard will appear here after players submit scores!', { show_alert: true });
+            return;
           }
           
           if (callbackQuery.data === 'show_rules') {
@@ -352,26 +417,12 @@ Good luck, Burger Boss! 🍔`;
         // Send explanation message
         let explanationText;
         if (ctx.chat.type === 'private') {
-          explanationText = "🏆 *Your Personal Leaderboard*\n\n";
-          explanationText += "High scores from your games will appear in the game message above.\n\n";
+          explanationText = "🏆 *Personal Leaderboard*\n\n";
+          explanationText += "Play the game above to submit your score! High scores will appear in the game message when available.";
         } else {
           const chatTitle = ctx.chat.title || 'this group';
           explanationText = `🏆 *${chatTitle} Leaderboard*\n\n`;
-          explanationText += "Top scores from all group members will appear in the game message above.\n\n";
-        }
-        
-        explanationText += "ℹ️ *How the leaderboard works:*\n";
-        explanationText += "• Play the game above to submit your score\n";
-        explanationText += "• Telegram automatically updates the game message with high scores\n";
-        explanationText += "• Only your best score for this chat is displayed\n";
-        explanationText += "• Scores are persistent and tied to the game message\n\n";
-        
-        if (ctx.chat.type === 'private') {
-          explanationText += "🏠 This is your personal leaderboard\n";
-          explanationText += "📤 Share your scores with friends using the share button in-game!";
-        } else {
-          explanationText += "🏆 All group members compete on the same leaderboard\n";
-          explanationText += "🥇 May the best burger builder win!";
+          explanationText += "Compete with group members! High scores will appear in the game message when players submit scores.";
         }
         
         await ctx.reply(explanationText, { parse_mode: 'Markdown' });
@@ -382,62 +433,26 @@ Good luck, Burger Boss! 🍔`;
       }
     });
 
-    // Alternative scores command to try fetching actual leaderboard data
+    // Simplified scores command 
     bot.command('scores', async (ctx) => {
       try {
         console.log(`📊 Scores lookup requested by ${ctx.from.first_name} (${ctx.from.id}) in chat ${ctx.chat.id}`);
         
-        // This command attempts to demonstrate getGameHighScores functionality
-        let statusText = "📊 *SCORE LOOKUP*\n\n";
-        statusText += "This command demonstrates how to fetch actual game scores.\n\n";
+        // Simply redirect to the main leaderboard functionality
+        let statusText = "📊 *SCORE STATUS*\n\n";
         
         if (ctx.chat.type === 'private') {
-          statusText += "🏠 Searching your personal game history\n";
+          statusText += "🏠 Your personal scores are tracked in game messages.\n";
         } else {
           const chatTitle = ctx.chat.title || 'this group';
-          statusText += `🏘️ Searching *${chatTitle}* game history\n`;
+          statusText += `🏘️ ${chatTitle} scores are tracked in game messages.\n`;
         }
         
-        statusText += "\n💡 Note: Scores can only be retrieved from game messages that have received score submissions.\n";
-        statusText += "📈 Use /highscores for the main leaderboard display";
+        statusText += "\n💡 Scores appear automatically in game messages after players submit them.\n";
+        statusText += "🎮 Use /start to play and submit scores\n";
+        statusText += "� Use /highscores to see the leaderboard";
         
         await ctx.reply(statusText, { parse_mode: 'Markdown' });
-        
-        // Create a game message that could potentially show scores if they exist
-        const gameMessage = await ctx.replyWithGame(GAME_SHORT_NAME, {
-          reply_markup: {
-            inline_keyboard: [
-              [
-                { text: "🎯 Play to Submit Score!", callback_game: {} }
-              ]
-            ]
-          }
-        });
-        
-        // Try to get scores (this will likely fail unless there are existing scores)
-        try {
-          const testScores = await ctx.api.getGameHighScores(
-            ctx.from.id,
-            {
-              chat_id: ctx.chat.id,
-              message_id: gameMessage.message_id
-            }
-          );
-          
-          if (testScores && testScores.length > 0) {
-            let scoresText = "🎯 *Found scores:*\n\n";
-            testScores.forEach((score, index) => {
-              const userName = score.user.first_name + (score.user.last_name ? ` ${score.user.last_name}` : '');
-              scoresText += `${index + 1}. ${userName}: ${score.score} pts\n`;
-            });
-            await ctx.reply(scoresText, { parse_mode: 'Markdown' });
-          } else {
-            await ctx.reply("🤔 No scores found for this message. Scores only appear after players submit them!");
-          }
-        } catch (scoresError) {
-          console.log('Expected error fetching scores for new message:', scoresError.message);
-          await ctx.reply("ℹ️ No existing scores found. Play the game above to submit scores!");
-        }
         
       } catch (error) {
         console.error('❌ Error with scores command:', error);
@@ -475,6 +490,16 @@ Good luck, Burger Boss! 🍔`;
       try {
         update = JSON.parse(event.body);
         console.log('📨 Received webhook update:', JSON.stringify(update, null, 2));
+        
+        // Check if this might be a score submission in a different format
+        if (update.message && update.message.web_app_data) {
+          console.log('📊 Potential Web App score data:', update.message.web_app_data);
+        }
+        
+        if (update.callback_query && update.callback_query.data) {
+          console.log('📊 Callback query data received:', update.callback_query.data);
+        }
+        
       } catch (parseError) {
         console.error('❌ Error parsing webhook update:', parseError);
         return {
