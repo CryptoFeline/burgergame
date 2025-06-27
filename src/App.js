@@ -436,6 +436,21 @@ function App() {
         console.log('  - typeof window.TelegramGameProxy.postScore:', typeof window.TelegramGameProxy?.postScore);
         console.log('  - Current URL:', window.location.href);
         
+        // Enhanced TelegramGameProxy debugging
+        if (window.TelegramGameProxy) {
+            console.log('🔍 TelegramGameProxy object inspection:');
+            console.log('  - Object keys:', Object.keys(window.TelegramGameProxy));
+            console.log('  - Object methods:', Object.getOwnPropertyNames(window.TelegramGameProxy));
+            console.log('  - Constructor:', window.TelegramGameProxy.constructor.name);
+            console.log('  - Prototype methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(window.TelegramGameProxy)));
+            
+            // Try different possible method names
+            const possibleMethods = ['postScore', 'sendScore', 'submitScore', 'reportScore', 'gameScore'];
+            possibleMethods.forEach(method => {
+                console.log(`  - ${method}:`, typeof window.TelegramGameProxy[method]);
+            });
+        }
+        
         // Capture score before state changes
         const finalScore = score;
         
