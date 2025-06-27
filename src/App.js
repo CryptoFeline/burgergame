@@ -428,11 +428,16 @@ function App() {
         
         console.log('🎮 GAME OVER TRIGGERED!');
         console.log('📊 Final Score:', score);
-        console.log('🔍 Environment Check:');
+        console.log('� Successful Drops:', successfulDrops);
+        console.log('�🔍 Environment Check:');
         console.log('  - isTelegramEnvironment:', isTelegramEnvironment);
         console.log('  - telegramReady:', telegramReady);
         console.log('  - window.TelegramGameProxy:', !!window.TelegramGameProxy);
+        console.log('  - typeof window.TelegramGameProxy.postScore:', typeof window.TelegramGameProxy?.postScore);
         console.log('  - Current URL:', window.location.href);
+        
+        // Capture score before state changes
+        const finalScore = score;
         
         // Set game state
         setGameFinished(true);
@@ -443,14 +448,14 @@ function App() {
         if (isTelegramEnvironment && telegramReady) {
             try {
                 console.log('✅ Telegram environment detected - attempting to report score');
-                console.log('Reporting final score to Telegram:', score);
-                const success = await reportScore(score);
+                console.log('Reporting final score to Telegram:', finalScore);
+                const success = await reportScore(finalScore);
                 
                 if (success) {
                     console.log('Score successfully reported to Telegram');
                     // Optionally show a confirmation
-                    if (score > 0) {
-                        showAlert(`Great job! Your score of ${score} has been saved!`);
+                    if (finalScore > 0) {
+                        showAlert(`Great job! Your score of ${finalScore} has been saved!`);
                     }
                 } else {
                     console.warn('Failed to report score to Telegram');
@@ -462,9 +467,9 @@ function App() {
             console.log('❌ NOT in Telegram environment or not ready - score not reported');
             console.log('  - isTelegramEnvironment:', isTelegramEnvironment);
             console.log('  - telegramReady:', telegramReady);
-            console.log('Final score (standalone mode):', score);
+            console.log('Final score (standalone mode):', finalScore);
         }
-    }, [isTelegramEnvironment, telegramReady, reportScore, score, playSound, stopBackgroundMusic, showAlert]);
+    }, [isTelegramEnvironment, telegramReady, reportScore, score, successfulDrops, playSound, stopBackgroundMusic, showAlert]);
 
     const getCameraPosition = () => {
         // Keep camera at a fixed position since we want the base to sink down

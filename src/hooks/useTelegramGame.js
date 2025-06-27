@@ -12,16 +12,19 @@ export const useTelegramGame = () => {
     useEffect(() => {
         // Detect Telegram environment
         const checkTelegramEnvironment = () => {
+            console.log('🔍 Checking Telegram environment...');
+            
             // Check for Telegram Game Proxy (primary method for Games)
-            if (window.TelegramGameProxy) {
+            if (window.TelegramGameProxy && typeof window.TelegramGameProxy.postScore === 'function') {
+                console.log('✅ Telegram Game Proxy detected with functional postScore');
                 setIsTelegramEnvironment(true);
                 setIsReady(true);
-                console.log('✅ Telegram Game Proxy detected');
                 return;
             }
 
             // Check for Telegram Web App (secondary, for Mini Apps)
             if (window.Telegram?.WebApp) {
+                console.log('✅ Telegram Web App detected');
                 setIsTelegramEnvironment(true);
                 const tg = window.Telegram.WebApp;
                 
@@ -33,31 +36,34 @@ export const useTelegramGame = () => {
                 }
                 
                 setIsReady(true);
-                console.log('✅ Telegram Web App detected', tg.initDataUnsafe);
                 return;
             }
 
-            // Check if we're in an iframe (likely Telegram)
+            // Check if we're in an iframe (likely Telegram) - but be more careful
             try {
-                if (window.parent !== window && window.parent.location.hostname.includes('telegram')) {
+                if (window.parent !== window && window.location.href.includes('netlify.app')) {
+                    // Only consider it Telegram if we're in iframe AND it's our game URL
+                    console.log('⚠️ In iframe but TelegramGameProxy not fully available');
+                    console.log('⚠️ Treating as Telegram environment but scores may not work');
                     setIsTelegramEnvironment(true);
                     setIsReady(true);
-                    console.log('✅ Telegram iframe detected');
                     return;
                 }
             } catch (e) {
                 // Cross-origin error - likely in Telegram
                 if (window.parent !== window) {
+                    console.log('⚠️ Cross-origin iframe detected - likely Telegram');
+                    console.log('⚠️ But TelegramGameProxy not confirmed functional');
                     setIsTelegramEnvironment(true);
                     setIsReady(true);
-                    console.log('✅ Likely Telegram environment (cross-origin)');
                     return;
                 }
             }
 
             // Standalone environment
+            console.log('ℹ️ Standalone environment - not in Telegram');
+            setIsTelegramEnvironment(false);
             setIsReady(true);
-            console.log('ℹ️ Standalone environment detected');
         };
 
         // Wait for Telegram scripts to load
@@ -100,15 +106,25 @@ export const useTelegramGame = () => {
                 return true;
             }
 
+            // More detailed error checking
+            if (window.TelegramGameProxy) {
+                console.error('❌ TelegramGameProxy exists but postScore is not a function');
+                console.error('❌ TelegramGameProxy methods:', Object.keys(window.TelegramGameProxy));
+                console.error('❌ postScore type:', typeof window.TelegramGameProxy.postScore);
+            } else {
+                console.error('❌ TelegramGameProxy not available at all');
+            }
+
             // Check if we're in Telegram but proxy not available
             if (window.parent !== window) {
-                console.error('❌ In Telegram but TelegramGameProxy not available');
+                console.error('❌ In Telegram iframe but TelegramGameProxy not functional');
                 console.error('🔧 Check: Game URL must exactly match what was registered with BotFather');
                 console.error('🔧 Current URL:', window.location.href);
+                console.error('🔧 Expected URL should match the one set in BotFather');
                 return false;
             }
 
-            console.warn('❌ TelegramGameProxy not available');
+            console.warn('❌ TelegramGameProxy not available - not in Telegram environment');
             return false;
 
         } catch (error) {
