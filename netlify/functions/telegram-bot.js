@@ -120,7 +120,7 @@ Ready to become the ultimate Burger Boss? 🏆`;
           
           // STEP 4: Acknowledge callback immediately (≤ 10s)
           await ctx.answerCallbackQuery({
-            url: "https://bossburgerbuild.netlify.app"
+            url: "https://bossburgerbuild.netlify.app?v=" + Date.now()
           });
           return;
         }
