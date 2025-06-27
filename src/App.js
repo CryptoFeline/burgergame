@@ -426,6 +426,14 @@ function App() {
         playSound('gameOver');
         stopBackgroundMusic();
         
+        console.log('🎮 GAME OVER TRIGGERED!');
+        console.log('📊 Final Score:', score);
+        console.log('🔍 Environment Check:');
+        console.log('  - isTelegramEnvironment:', isTelegramEnvironment);
+        console.log('  - telegramReady:', telegramReady);
+        console.log('  - window.TelegramGameProxy:', !!window.TelegramGameProxy);
+        console.log('  - Current URL:', window.location.href);
+        
         // Set game state
         setGameFinished(true);
         setGameStarted(false);
@@ -434,6 +442,7 @@ function App() {
         // Report score to Telegram if in Telegram environment
         if (isTelegramEnvironment && telegramReady) {
             try {
+                console.log('✅ Telegram environment detected - attempting to report score');
                 console.log('Reporting final score to Telegram:', score);
                 const success = await reportScore(score);
                 
@@ -450,6 +459,9 @@ function App() {
                 console.error('Error reporting score to Telegram:', error);
             }
         } else {
+            console.log('❌ NOT in Telegram environment or not ready - score not reported');
+            console.log('  - isTelegramEnvironment:', isTelegramEnvironment);
+            console.log('  - telegramReady:', telegramReady);
             console.log('Final score (standalone mode):', score);
         }
     }, [isTelegramEnvironment, telegramReady, reportScore, score, playSound, stopBackgroundMusic, showAlert]);
