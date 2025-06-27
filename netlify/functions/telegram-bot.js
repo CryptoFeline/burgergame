@@ -127,9 +127,30 @@ Ready to become the ultimate Burger Boss? 🏆`;
           return;
         }
 
+        // Handle test score button (for debugging) - CHECK THIS FIRST
+        if (callbackQuery.data === 'test_score') {
+          console.log('🧪 Test score button clicked');
+          
+          // STEP 4: Acknowledge callback immediately
+          await ctx.answerCallbackQuery({
+            text: "🧪 Testing score submission...",
+            show_alert: false
+          });
+
+          // Test direct score submission
+          const testScore = 42;
+          console.log(`🧪 Testing direct setGameScore with score: ${testScore}`);
+          await writeGameScore(ctx, testScore, callbackQuery);
+          return;
+        }
+
         // Handle score submission from TelegramGameProxy.postScore()
         // This arrives as a callback_query after postScore() is called
-        if (callbackQuery.data && callbackQuery.data.includes('score')) {
+        // Check for JSON format specifically to avoid matching button names
+        if (callbackQuery.data && (
+            callbackQuery.data.startsWith('{"type":"game_score"') ||
+            callbackQuery.data.match(/^.*"score"\s*:\s*\d+.*$/)
+        )) {
           console.log('🎯 SCORE SUBMISSION DETECTED from TelegramGameProxy.postScore()');
           console.log('📊 Raw callback data:', callbackQuery.data);
           console.log('👤 User:', callbackQuery.from.first_name, `(${callbackQuery.from.id})`);
@@ -139,7 +160,7 @@ Ready to become the ultimate Burger Boss? 🏆`;
           
           // STEP 4: Acknowledge callback immediately (≤ 10s) 
           await ctx.answerCallbackQuery({
-            text: "📊 Submitting score...",
+            text: "📊 Processing your score...",
             show_alert: false
           });
 
@@ -194,23 +215,6 @@ Ready to become the ultimate Burger Boss? 🏆`;
 
           // STEP 6: Display leaderboard
           await showLeaderboard(ctx, callbackQuery, gameShortName);
-          return;
-        }
-
-        // Handle test score button (for debugging)
-        if (callbackQuery.data === 'test_score') {
-          console.log('🧪 Test score button clicked');
-          
-          // STEP 4: Acknowledge callback immediately
-          await ctx.answerCallbackQuery({
-            text: "🧪 Testing score submission...",
-            show_alert: false
-          });
-
-          // Test direct score submission
-          const testScore = 42;
-          console.log(`🧪 Testing direct setGameScore with score: ${testScore}`);
-          await writeGameScore(ctx, testScore, callbackQuery);
           return;
         }
 
@@ -447,8 +451,11 @@ Built with Telegram's Games API 🚀`;
             from_id: update.callback_query.from?.id
           });
           
-          // Special logging for potential score data
-          if (update.callback_query.data && update.callback_query.data.includes('score')) {
+          // Special logging for potential score data (JSON format only)
+          if (update.callback_query.data && (
+              update.callback_query.data.startsWith('{"type":"game_score"') ||
+              update.callback_query.data.match(/^.*"score"\s*:\s*\d+.*$/)
+          )) {
             console.log('🎯 POTENTIAL SCORE DATA DETECTED in webhook:');
             console.log('📊 Full callback data:', update.callback_query.data);
           }
