@@ -128,9 +128,12 @@ Ready to become the ultimate Burger Boss? 🏆`;
         // Handle score submission from TelegramGameProxy.postScore()
         // This arrives as a callback_query after postScore() is called
         if (callbackQuery.data && callbackQuery.data.includes('score')) {
-          console.log('� Score submission received from TelegramGameProxy.postScore()');
+          console.log('🎯 SCORE SUBMISSION DETECTED from TelegramGameProxy.postScore()');
           console.log('📊 Raw callback data:', callbackQuery.data);
           console.log('👤 User:', callbackQuery.from.first_name, `(${callbackQuery.from.id})`);
+          console.log('💬 Chat ID:', callbackQuery.message?.chat?.id);
+          console.log('📧 Message ID:', callbackQuery.message?.message_id);
+          console.log('🕐 Timestamp:', new Date().toISOString());
           
           // STEP 4: Acknowledge callback immediately (≤ 10s) 
           await ctx.answerCallbackQuery({

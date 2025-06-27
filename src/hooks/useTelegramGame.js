@@ -15,11 +15,8 @@ export const useTelegramGame = () => {
             console.log('🔍 Checking Telegram environment...');
             
             // Check for Telegram Game Proxy (primary method for Games)
-            if (window.TelegramGameProxy && (
-                typeof window.TelegramGameProxy.postScore === 'function' ||
-                typeof window.TelegramGameProxy.shareScore === 'function'
-            )) {
-                console.log('✅ Telegram Game Proxy detected with functional score method');
+            if (window.TelegramGameProxy && typeof window.TelegramGameProxy.postScore === 'function') {
+                console.log('✅ Telegram Game Proxy detected with postScore method');
                 setIsTelegramEnvironment(true);
                 setIsReady(true);
                 return;
@@ -99,38 +96,35 @@ export const useTelegramGame = () => {
             console.log(`🎮 GAME OVER - Player achieved score: ${finalScore}`);
             console.log(`📤 Sending score to Telegram via TelegramGameProxy.postScore()`);
 
-            // STEP 3: Use TelegramGameProxy - try multiple possible methods
-            // Based on inspection, the actual method might be shareScore, not postScore
-            let scoreSubmitted = false;
+            // STEP 3: Use TelegramGameProxy.postScore() - THE CORRECT METHOD for score submission
+            // According to Telegram documentation, postScore is for leaderboard submission
+            // shareScore is only for sharing the game link, NOT for submitting scores
             
             if (window.TelegramGameProxy) {
-                // Try shareScore first (found in inspection)
-                if (typeof window.TelegramGameProxy.shareScore === 'function') {
-                    console.log(`🚀 Calling TelegramGameProxy.shareScore(${finalScore})`);
-                    try {
-                        window.TelegramGameProxy.shareScore(finalScore);
-                        console.log('✅ TelegramGameProxy.shareScore() called successfully');
-                        scoreSubmitted = true;
-                    } catch (error) {
-                        console.error('❌ shareScore failed:', error);
-                    }
-                }
-                
-                // Try postScore as fallback (original method)
-                if (!scoreSubmitted && typeof window.TelegramGameProxy.postScore === 'function') {
+                // Use postScore - the correct method for score submission
+                if (typeof window.TelegramGameProxy.postScore === 'function') {
                     console.log(`🚀 Calling TelegramGameProxy.postScore(${finalScore})`);
+                    console.log('🔍 Available TelegramGameProxy methods:', Object.keys(window.TelegramGameProxy));
+                    console.log('🔍 TelegramGameProxy type check:', typeof window.TelegramGameProxy.postScore);
+                    
                     try {
+                        // Log the environment details before calling postScore
+                        console.log('🌍 Environment details:');
+                        console.log('  - URL:', window.location.href);
+                        console.log('  - Parent window:', window.parent !== window ? 'YES (iframe)' : 'NO (standalone)');
+                        console.log('  - User agent:', navigator.userAgent.substring(0, 100));
+                        
                         window.TelegramGameProxy.postScore(finalScore);
                         console.log('✅ TelegramGameProxy.postScore() called successfully');
-                        scoreSubmitted = true;
+                        console.log('⏳ Score sent to Telegram - expecting bot to receive callback query...');
+                        console.log('🎯 Next step: Bot should call setGameScore() to save to leaderboard');
+                        return true;
                     } catch (error) {
                         console.error('❌ postScore failed:', error);
                     }
-                }
-                
-                if (scoreSubmitted) {
-                    console.log('⏳ Waiting for bot to receive and process the score...');
-                    return true;
+                } else {
+                    console.error('❌ TelegramGameProxy.postScore is not available');
+                    console.error('❌ Available methods:', Object.keys(window.TelegramGameProxy));
                 }
             }
 

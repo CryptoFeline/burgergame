@@ -200,56 +200,25 @@
       // Ensure score is valid
       const finalScore = Math.max(0, Math.floor(score));
       
-      // For Telegram Games leaderboards, we need to trigger a callback query
-      // This simulates what happens when the user clicks a button in the game
-      if (isIframe && window.parent !== window) {
-        try {
-          // The bot expects callback query data in this format
-          const callbackData = JSON.stringify({
-            type: 'game_score',
-            score: finalScore,
-            timestamp: Date.now()
-          });
-          
-          // Method 1: Send as a simulated callback query (preferred for Games API)
-          window.parent.postMessage({
-            callback_query: {
-              id: 'game_score_' + Date.now(),
-              from: {id: 'current_user'}, // Will be filled by Telegram
-              data: callbackData,
-              game_short_name: 'buildergame'
-            }
-          }, '*');
-          console.log('✅ Score posted as callback query for leaderboard');
-          
-          // Method 2: Send as event type (for compatibility)
-          window.parent.postMessage({
-            eventType: 'game_score',
-            eventData: callbackData
-          }, '*');
-          console.log('✅ Score posted via eventType method');
-          
-          // Method 3: Direct message format
-          window.parent.postMessage({
-            type: 'game_score',
-            score: finalScore,
-            timestamp: Date.now()
-          }, '*');
-          console.log('✅ Score posted via direct message');
-          
-        } catch (e) {
-          console.error('❌ Failed to post score:', e);
-        }
-      }
+      // Format the callback data exactly as the bot expects
+      const callbackData = JSON.stringify({
+        type: 'game_score',
+        score: finalScore,
+        timestamp: Date.now()
+      });
       
-      // Also try the traditional event system
-      postEvent('game_score', function(error) {
+      console.log('📤 Posting score via callback_query mechanism');
+      console.log('📊 Score data:', callbackData);
+      
+      // Send the score data in the format that triggers a callback query
+      // This will be picked up by Telegram and forwarded to the bot
+      postEvent('callback_query', function(error) {
         if (error) {
-          console.error('❌ Failed to post score via event:', error);
+          console.error('❌ Failed to post score via callback query:', error);
         } else {
-          console.log('✅ Score posted via event system');
+          console.log('✅ Score posted successfully - bot should receive callback query');
         }
-      }, {score: finalScore, timestamp: Date.now()});
+      }, callbackData);
     },
     paymentFormSubmit: function (formData) {
       if (!formData ||
