@@ -11,17 +11,7 @@ const BurgerGameTitle = () => (
     />
 );
 
-const Screen = ({ score, startGame, isGameOver = false, telegramUser = null, isTelegramEnvironment = false, shareScore = null }) => {
-    
-    const handleShareScore = () => {
-        if (shareScore && score > 0) {
-            const success = shareScore(score);
-            if (!success) {
-                console.warn('Failed to share score');
-            }
-        }
-    };
-
+const Screen = ({ score, startGame, isGameOver = false, telegramUser = null, isTelegramEnvironment = false }) => {
     return (
         <>
             <div className="screen">
@@ -31,68 +21,41 @@ const Screen = ({ score, startGame, isGameOver = false, telegramUser = null, isT
                         <h2 className="game-over-text">GAME OVER</h2>
                         {telegramUser && (
                             <p className="telegram-user">
-                                👋 {telegramUser.first_name}
-                                {telegramUser.last_name ? ` ${telegramUser.last_name}` : ''}
+                                👋 Hey {telegramUser.first_name}!
                             </p>
                         )}
                         <div className="final-score-section">
                             <h4 className="final-score-label">FINAL SCORE</h4>
                             <h3 className="final-score-value">{score}</h3>
-                            {isTelegramEnvironment && (
-                                <p className="telegram-status">Score saved to leaderboard! 🏆</p>
+                            {isTelegramEnvironment && score > 0 && (
+                                <p className="telegram-status">🏆 Score automatically saved!</p>
                             )}
                         </div>
                         
                         <div className="game-over-buttons">
                             <button className="play-again-btn" onClick={() => startGame()}>
-                                Play Again
+                                🎮 Play Again
                             </button>
-                            
-                            {isTelegramEnvironment && score > 0 && (
-                                <button className="submit-score-btn" onClick={() => {
-                                    // Create a bot link with the score
-                                    const botUrl = `https://t.me/bossburger_bot?start=score_${score}`;
-                                    if (window.Telegram?.WebApp) {
-                                        window.Telegram.WebApp.openTelegramLink(botUrl);
-                                    } else {
-                                        window.open(botUrl, '_blank');
-                                    }
-                                }}>
-                                    🏆 Submit to Leaderboard
-                                </button>
-                            )}
-                            
-                            {isTelegramEnvironment && shareScore && score > 0 && (
-                                <button className="share-btn" onClick={handleShareScore}>
-                                    📤 Share Score
-                                </button>
-                            )}
                         </div>
-                        
-                        {isTelegramEnvironment && (
-                            <div className="leaderboard-hint">
-                                💡 Use /highscores to view the leaderboard
-                            </div>
-                        )}
                     </>
                 ) : (
                     <>
                         <BurgerGameTitle />
-                        <p className="subtitle">Stack burgers like a boss!</p>
+                        <p className="subtitle">Stack burgers like a boss! 🍔</p>
                         {telegramUser && (
                             <p className="telegram-welcome">
-                                Welcome, {telegramUser.first_name}! 🍔
+                                Welcome, {telegramUser.first_name}! 
                             </p>
                         )}
                         <button className="start-btn" onClick={() => startGame()}>
-                            START GAME
+                            🎮 START GAME
                         </button>
                         {process.env.NODE_ENV === 'development' && (
                             <div className="dev-info">
                                 {isTelegramEnvironment ? (
                                     <p className="debug-info">🤖 Telegram Mode</p>
                                 ) : (
-                                    <p className="debug-info">🔧 Local Dev Mode<br/>Deploy to test Telegram</p>
+                                    <p className="debug-info">🔧 Local Dev Mode</p>
                                 )}
                             </div>
                         )}

@@ -184,42 +184,67 @@ code {
     font-weight: 300;
   }
 
+  .telegram-user {
+    font-size: 16px;
+    color: rgba(255, 255, 255, 0.9);
+    margin: 15px 0;
+    font-weight: 400;
+  }
+
+  .telegram-welcome {
+    font-size: 18px;
+    color: rgba(255, 255, 255, 0.9);
+    margin: 15px 0 25px 0;
+    font-weight: 400;
+  }
+
+  .telegram-status {
+    font-size: 14px;
+    color: #4CAF50;
+    margin: 15px 0 0 0;
+    font-weight: 500;
+    background: rgba(76, 175, 80, 0.1);
+    padding: 8px 16px;
+    border-radius: 20px;
+    border: 1px solid rgba(76, 175, 80, 0.3);
+  }
+
   .final-score-label {
     font-size: 18px;
-    margin: 0 0 5px 0;
+    margin: 0 0 8px 0;
     color: rgba(255, 255, 255, 0.7);
     font-weight: 300;
     letter-spacing: 1px;
   }
 
   .final-score-value {
-    font-size: 48px;
-    margin: 0 0 30px 0;
+    font-size: 52px;
+    margin: 0 0 20px 0;
     font-weight: bold;
     color: #ffd23f;
     text-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
   }
 
   .game-over-text {
-    font-size: 36px;
+    font-size: 32px;
     font-weight: bold;
     color: #ff4757;
     text-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
-    margin: 20px 0 10px 0;
-    letter-spacing: 3px;
+    margin: 15px 0 20px 0;
+    letter-spacing: 2px;
     text-align: center;
   }
 
   .final-score-section {
-    margin: 20px 0 30px 0;
+    margin: 25px 0 35px 0;
     text-align: center;
   }
 
   .start-btn, .play-again-btn {
-    margin-top: 20px;
-    height: 60px;
-    width: 200px;
-    border-radius: 30px;
+    margin-top: 25px;
+    height: 56px;
+    width: 220px;
+    border-radius: 28px;
     background: linear-gradient(135deg, #4CAF50, #45a049);
     border: none;
     color: #fff;
@@ -228,6 +253,7 @@ code {
     cursor: pointer;
     transition: all 0.3s ease;
     box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+    letter-spacing: 0.5px;
     
     &:hover {
       transform: translateY(-3px);
@@ -250,34 +276,22 @@ code {
     }
   }
 
-  .share-btn {
-    background: linear-gradient(135deg, #28a745, #20c997);
-    box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
-    margin-top: 10px;
-    
-    &:hover {
-      background: linear-gradient(135deg, #20c997, #17a2b8);
-      box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
-    }
-  }
-
   .game-over-buttons {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 15px;
     align-items: center;
-    margin-top: 20px;
+    margin-top: 25px;
   }
 
-  .leaderboard-hint {
-    margin-top: 20px;
-    padding: 10px 15px;
-    background: rgba(0, 123, 255, 0.1);
-    border: 1px solid rgba(0, 123, 255, 0.3);
-    border-radius: 8px;
-    color: #007bff;
-    font-size: 0.9em;
-    text-align: center;
+  .dev-info {
+    margin-top: 30px;
+    
+    .debug-info {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.5);
+      margin: 0;
+    }
   }
 }
 

@@ -24,7 +24,6 @@ function App() {
         telegramUser, 
         isReady: telegramReady, 
         reportScore,
-        shareScore,
         showAlert 
     } = useTelegramGame();
     
@@ -484,7 +483,6 @@ function App() {
                         isGameOver={gameFinished}
                         telegramUser={telegramUser}
                         isTelegramEnvironment={isTelegramEnvironment}
-                        shareScore={shareScore}
                     />
                 )}
                 {!isLoading && (

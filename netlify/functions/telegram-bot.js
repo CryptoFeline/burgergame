@@ -279,8 +279,10 @@ Ready to become the ultimate Burger Boss? 🏆`;
           const messageId = callbackQuery.message.message_id;
           console.log(`📍 Fetching scores for user ${userId}, chat ${chatId}, message ${messageId}`);
           
-          // Call with individual parameters
-          highScores = await ctx.api.getGameHighScores(userId, {
+          // Call getGameHighScores with correct parameter structure
+          // According to Telegram Bot API: getGameHighScores(user_id, chat_id, message_id, [inline_message_id])
+          highScores = await ctx.api.getGameHighScores({
+            user_id: userId,
             chat_id: chatId,
             message_id: messageId
           });
@@ -288,7 +290,8 @@ Ready to become the ultimate Burger Boss? 🏆`;
           console.log(`📍 Fetching scores for user ${userId}, inline message ${callbackQuery.inline_message_id}`);
           
           // Call with inline message ID
-          highScores = await ctx.api.getGameHighScores(userId, {
+          highScores = await ctx.api.getGameHighScores({
+            user_id: userId,
             inline_message_id: callbackQuery.inline_message_id
           });
         } else {
