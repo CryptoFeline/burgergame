@@ -279,21 +279,14 @@ Ready to become the ultimate Burger Boss? 🏆`;
           const messageId = callbackQuery.message.message_id;
           console.log(`📍 Fetching scores for user ${userId}, chat ${chatId}, message ${messageId}`);
           
-          // Call getGameHighScores with correct parameter structure
-          // According to Telegram Bot API: getGameHighScores(user_id, chat_id, message_id, [inline_message_id])
-          highScores = await ctx.api.getGameHighScores({
-            user_id: userId,
-            chat_id: chatId,
-            message_id: messageId
-          });
+          // Call getGameHighScores with correct Grammy.js parameter structure
+          // Grammy expects: getGameHighScores(user_id, chat_id, message_id)
+          highScores = await ctx.api.getGameHighScores(userId, chatId, messageId);
         } else if (callbackQuery.inline_message_id) {
           console.log(`📍 Fetching scores for user ${userId}, inline message ${callbackQuery.inline_message_id}`);
           
-          // Call with inline message ID
-          highScores = await ctx.api.getGameHighScores({
-            user_id: userId,
-            inline_message_id: callbackQuery.inline_message_id
-          });
+          // Call with inline message ID - Grammy expects: getGameHighScores(user_id, undefined, undefined, inline_message_id)
+          highScores = await ctx.api.getGameHighScores(userId, undefined, undefined, callbackQuery.inline_message_id);
         } else {
           throw new Error('No valid message identifiers for leaderboard');
         }
