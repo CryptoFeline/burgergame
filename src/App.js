@@ -445,7 +445,7 @@ function App() {
             console.log('  - Prototype methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(window.TelegramGameProxy)));
             
             // Try different possible method names
-            const possibleMethods = ['postScore', 'sendScore', 'submitScore', 'reportScore', 'gameScore'];
+            const possibleMethods = ['postScore', 'shareScore', 'sendScore', 'submitScore', 'reportScore', 'gameScore'];
             possibleMethods.forEach(method => {
                 console.log(`  - ${method}:`, typeof window.TelegramGameProxy[method]);
             });
