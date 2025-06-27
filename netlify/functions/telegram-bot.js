@@ -62,7 +62,8 @@ Ready to become the ultimate Burger Boss? 🏆`;
                 { text: "🍔 Play Boss Burger Builder!", callback_game: {} }
               ],
               [
-                { text: "🏆 View Leaderboard", callback_data: "show_leaderboard" }
+                { text: "🏆 View Leaderboard", callback_data: `show_leaderboard:${GAME_SHORT_NAME}` },
+                { text: "🧪 Test Score", callback_data: "test_score" }
               ]
             ]
           }
@@ -87,7 +88,8 @@ Ready to become the ultimate Burger Boss? 🏆`;
                 { text: "🍔 Play Boss Burger Builder!", callback_game: {} }
               ],
               [
-                { text: "🏆 View Leaderboard", callback_data: "show_leaderboard" }
+                { text: "🏆 View Leaderboard", callback_data: `show_leaderboard:${GAME_SHORT_NAME}` },
+                { text: "🧪 Test Score", callback_data: "test_score" }
               ]
             ]
           }
@@ -174,8 +176,15 @@ Ready to become the ultimate Burger Boss? 🏆`;
         }
 
         // Handle leaderboard button
-        if (callbackQuery.data === 'show_leaderboard') {
+        if (callbackQuery.data && callbackQuery.data.startsWith('show_leaderboard')) {
           console.log('🏆 Leaderboard requested');
+          
+          // Extract game short name from callback data
+          let gameShortName = GAME_SHORT_NAME; // default fallback
+          if (callbackQuery.data.includes(':')) {
+            gameShortName = callbackQuery.data.split(':')[1];
+            console.log(`🎮 Game short name from callback: ${gameShortName}`);
+          }
           
           // STEP 4: Acknowledge callback immediately
           await ctx.answerCallbackQuery({
@@ -184,7 +193,24 @@ Ready to become the ultimate Burger Boss? 🏆`;
           });
 
           // STEP 6: Display leaderboard
-          await showLeaderboard(ctx, callbackQuery);
+          await showLeaderboard(ctx, callbackQuery, gameShortName);
+          return;
+        }
+
+        // Handle test score button (for debugging)
+        if (callbackQuery.data === 'test_score') {
+          console.log('🧪 Test score button clicked');
+          
+          // STEP 4: Acknowledge callback immediately
+          await ctx.answerCallbackQuery({
+            text: "🧪 Testing score submission...",
+            show_alert: false
+          });
+
+          // Test direct score submission
+          const testScore = 42;
+          console.log(`🧪 Testing direct setGameScore with score: ${testScore}`);
+          await writeGameScore(ctx, testScore, callbackQuery);
           return;
         }
 
@@ -285,9 +311,10 @@ Ready to become the ultimate Burger Boss? 🏆`;
     // STEP 6: Display leaderboard on demand
     // =============================================================================
     
-    async function showLeaderboard(ctx, callbackQuery) {
+    async function showLeaderboard(ctx, callbackQuery, gameShortName = GAME_SHORT_NAME) {
       try {
         console.log('📊 Fetching leaderboard data');
+        console.log(`🎮 Game context: ${gameShortName}`);
 
         // STEP 6: Call getGameHighScores with correct parameter structure
         // Grammy.js expects: getGameHighScores(chat_id, message_id, user_id)
