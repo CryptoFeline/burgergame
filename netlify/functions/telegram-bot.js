@@ -269,22 +269,31 @@ Ready to become the ultimate Burger Boss? 🏆`;
       try {
         console.log('📊 Fetching leaderboard data');
 
-        // Determine identifiers (same as used for setGameScore)
-        let scoreParams = {
-          user_id: ctx.from.id
-        };
-
+        // STEP 6: Call getGameHighScores with correct parameter structure
+        // The API expects: getGameHighScores(user_id, {chat_id, message_id} OR {inline_message_id})
+        const userId = ctx.from.id;
+        let highScores;
+        
         if (callbackQuery.message) {
-          scoreParams.chat_id = callbackQuery.message.chat.id;
-          scoreParams.message_id = callbackQuery.message.message_id;
+          const chatId = callbackQuery.message.chat.id;
+          const messageId = callbackQuery.message.message_id;
+          console.log(`📍 Fetching scores for user ${userId}, chat ${chatId}, message ${messageId}`);
+          
+          // Call with individual parameters
+          highScores = await ctx.api.getGameHighScores(userId, {
+            chat_id: chatId,
+            message_id: messageId
+          });
         } else if (callbackQuery.inline_message_id) {
-          scoreParams.inline_message_id = callbackQuery.inline_message_id;
+          console.log(`📍 Fetching scores for user ${userId}, inline message ${callbackQuery.inline_message_id}`);
+          
+          // Call with inline message ID
+          highScores = await ctx.api.getGameHighScores(userId, {
+            inline_message_id: callbackQuery.inline_message_id
+          });
         } else {
           throw new Error('No valid message identifiers for leaderboard');
         }
-
-        // STEP 6: Call getGameHighScores
-        const highScores = await ctx.api.getGameHighScores(scoreParams);
         console.log(`📈 Retrieved ${highScores.length} high scores`);
 
         if (highScores.length === 0) {
