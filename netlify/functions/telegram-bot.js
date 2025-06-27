@@ -207,30 +207,36 @@ Ready to become the ultimate Burger Boss? 🏆`;
         
         console.log(`🏆 Writing score ${score} for user ${userName} (${userId})`);
 
-        // Determine identifiers based on how the game was started
-        let scoreParams = {
-          user_id: userId,
-          score: score,
-          force: true // Allow score updates (can be toggled for production)
-        };
-
-        // If game was started from chat message, use chat_id and message_id
+        // STEP 5: Call setGameScore with correct Grammy.js parameters
+        // Grammy.js expects: setGameScore(chat_id, message_id, user_id, score, options)
+        let result;
+        
         if (callbackQuery.message) {
-          scoreParams.chat_id = callbackQuery.message.chat.id;
-          scoreParams.message_id = callbackQuery.message.message_id;
-          console.log(`📍 Score scoped to chat ${scoreParams.chat_id}, message ${scoreParams.message_id}`);
-        }
-        // If started from inline mode, use inline_message_id
-        else if (callbackQuery.inline_message_id) {
-          scoreParams.inline_message_id = callbackQuery.inline_message_id;
-          console.log(`📍 Score scoped to inline message ${scoreParams.inline_message_id}`);
-        }
-        else {
+          const chatId = callbackQuery.message.chat.id;
+          const messageId = callbackQuery.message.message_id;
+          console.log(`📍 Score scoped to chat ${chatId}, message ${messageId}`);
+          
+          result = await ctx.api.setGameScore(
+            chatId,     // chat_id
+            messageId,  // message_id
+            userId,     // user_id
+            score,      // score
+            { force: true } // options
+          );
+        } else if (callbackQuery.inline_message_id) {
+          console.log(`📍 Score scoped to inline message ${callbackQuery.inline_message_id}`);
+          
+          // For inline messages, use setGameScoreInline
+          result = await ctx.api.setGameScoreInline(
+            callbackQuery.inline_message_id, // inline_message_id
+            userId,     // user_id
+            score,      // score
+            { force: true } // options
+          );
+        } else {
           throw new Error('No valid message identifiers found for score scoping');
         }
-
-        // STEP 5: Call setGameScore
-        const result = await ctx.api.setGameScore(scoreParams);
+        
         console.log(`✅ Score written successfully:`, result);
 
         // Send success feedback
@@ -270,7 +276,7 @@ Ready to become the ultimate Burger Boss? 🏆`;
         console.log('📊 Fetching leaderboard data');
 
         // STEP 6: Call getGameHighScores with correct parameter structure
-        // The API expects: getGameHighScores(user_id, {chat_id, message_id} OR {inline_message_id})
+        // Grammy.js expects: getGameHighScores(chat_id, message_id, user_id)
         const userId = ctx.from.id;
         let highScores;
         
@@ -279,14 +285,14 @@ Ready to become the ultimate Burger Boss? 🏆`;
           const messageId = callbackQuery.message.message_id;
           console.log(`📍 Fetching scores for user ${userId}, chat ${chatId}, message ${messageId}`);
           
-          // Call getGameHighScores with correct Grammy.js parameter structure
-          // Grammy expects: getGameHighScores(user_id, chat_id, message_id)
-          highScores = await ctx.api.getGameHighScores(userId, chatId, messageId);
+          // Call getGameHighScores with correct Grammy.js parameter order
+          // Grammy expects: getGameHighScores(chat_id, message_id, user_id)
+          highScores = await ctx.api.getGameHighScores(chatId, messageId, userId);
         } else if (callbackQuery.inline_message_id) {
           console.log(`📍 Fetching scores for user ${userId}, inline message ${callbackQuery.inline_message_id}`);
           
-          // Call with inline message ID - Grammy expects: getGameHighScores(user_id, undefined, undefined, inline_message_id)
-          highScores = await ctx.api.getGameHighScores(userId, undefined, undefined, callbackQuery.inline_message_id);
+          // For inline messages, use getGameHighScoresInline method
+          highScores = await ctx.api.getGameHighScoresInline(callbackQuery.inline_message_id, userId);
         } else {
           throw new Error('No valid message identifiers for leaderboard');
         }
