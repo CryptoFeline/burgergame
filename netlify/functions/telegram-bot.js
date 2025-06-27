@@ -405,13 +405,35 @@ Built with Telegram's Games API 🚀`;
         update = JSON.parse(event.body);
         console.log('📨 Webhook update received');
         
-        // Check for callback queries specifically
+        // Enhanced debugging for all callback queries
         if (update.callback_query) {
           console.log('📞 Callback query in update:', {
             id: update.callback_query.id,
             game_short_name: update.callback_query.game_short_name,
-            has_data: !!update.callback_query.data
+            has_data: !!update.callback_query.data,
+            data_preview: update.callback_query.data ? 
+              (update.callback_query.data.length > 50 ? 
+                update.callback_query.data.substring(0, 50) + '...' : 
+                update.callback_query.data) : 
+              null,
+            from_user: update.callback_query.from?.first_name,
+            from_id: update.callback_query.from?.id
           });
+          
+          // Special logging for potential score data
+          if (update.callback_query.data && update.callback_query.data.includes('score')) {
+            console.log('🎯 POTENTIAL SCORE DATA DETECTED in webhook:');
+            console.log('📊 Full callback data:', update.callback_query.data);
+          }
+        }
+        
+        // Debug any other update types that might contain score data
+        if (update.message) {
+          console.log('💬 Message update received from:', update.message.from?.first_name);
+        }
+        
+        if (update.inline_query) {
+          console.log('🔍 Inline query received');
         }
         
       } catch (parseError) {

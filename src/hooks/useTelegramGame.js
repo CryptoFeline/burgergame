@@ -104,20 +104,30 @@ export const useTelegramGame = () => {
                 // Use postScore - the correct method for score submission
                 if (typeof window.TelegramGameProxy.postScore === 'function') {
                     console.log(`🚀 Calling TelegramGameProxy.postScore(${finalScore})`);
-                    console.log('🔍 Available TelegramGameProxy methods:', Object.keys(window.TelegramGameProxy));
-                    console.log('🔍 TelegramGameProxy type check:', typeof window.TelegramGameProxy.postScore);
+                    console.log('🔍 Environment check:');
+                    console.log('  - TelegramGameProxy exists:', !!window.TelegramGameProxy);
+                    console.log('  - postScore method exists:', typeof window.TelegramGameProxy?.postScore);
+                    console.log('  - Available methods:', window.TelegramGameProxy ? Object.keys(window.TelegramGameProxy) : 'none');
+                    console.log('  - Is iframe:', window.parent !== window);
+                    console.log('  - URL:', window.location.href);
+                    console.log('  - User agent contains "Telegram":', navigator.userAgent.includes('Telegram'));
                     
                     try {
-                        // Log the environment details before calling postScore
-                        console.log('🌍 Environment details:');
-                        console.log('  - URL:', window.location.href);
-                        console.log('  - Parent window:', window.parent !== window ? 'YES (iframe)' : 'NO (standalone)');
-                        console.log('  - User agent:', navigator.userAgent.substring(0, 100));
+                        // Add a timestamp to track this specific call
+                        const callId = 'score_' + Date.now();
+                        console.log(`🎯 ${callId}: Starting postScore call`);
                         
                         window.TelegramGameProxy.postScore(finalScore);
-                        console.log('✅ TelegramGameProxy.postScore() called successfully');
-                        console.log('⏳ Score sent to Telegram - expecting bot to receive callback query...');
-                        console.log('🎯 Next step: Bot should call setGameScore() to save to leaderboard');
+                        
+                        console.log(`✅ ${callId}: TelegramGameProxy.postScore() completed`);
+                        console.log('⏳ Now waiting for bot to receive callback query...');
+                        console.log('🎯 Expected bot log: "SCORE SUBMISSION DETECTED"');
+                        
+                        // Set a timeout to check if the bot received anything
+                        setTimeout(() => {
+                            console.log(`⏰ ${callId}: 5 seconds passed - check bot logs for callback query`);
+                        }, 5000);
+                        
                         return true;
                     } catch (error) {
                         console.error('❌ postScore failed:', error);

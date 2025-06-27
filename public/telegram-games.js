@@ -207,18 +207,55 @@
         timestamp: Date.now()
       });
       
-      console.log('📤 Posting score via callback_query mechanism');
+      console.log('📤 Simulating Telegram callback query for score submission');
       console.log('📊 Score data:', callbackData);
       
-      // Send the score data in the format that triggers a callback query
-      // This will be picked up by Telegram and forwarded to the bot
-      postEvent('callback_query', function(error) {
-        if (error) {
-          console.error('❌ Failed to post score via callback query:', error);
-        } else {
-          console.log('✅ Score posted successfully - bot should receive callback query');
+      // In a real Telegram environment, this would trigger a callback query.
+      // For our fallback, we need to simulate this by sending the data
+      // in a format that matches how Telegram would send it to the bot.
+      
+      if (isIframe && window.parent !== window) {
+        try {
+          // Method 1: Try to send as a simulated Telegram update
+          const telegramUpdate = {
+            update_id: Date.now(),
+            callback_query: {
+              id: 'game_score_' + Date.now(),
+              from: {
+                id: 'current_user', // Will be filled by Telegram in real environment
+                first_name: 'TestUser'
+              },
+              message: {
+                message_id: 'current_message',
+                chat: {
+                  id: 'current_chat'
+                }
+              },
+              data: callbackData,
+              game_short_name: 'buildergame'
+            }
+          };
+          
+          // Send as a Telegram update format
+          window.parent.postMessage({
+            eventType: 'telegram_update',
+            eventData: telegramUpdate
+          }, '*');
+          
+          // Method 2: Also try the direct callback data approach
+          window.parent.postMessage({
+            eventType: 'callback_query',
+            eventData: callbackData
+          }, '*');
+          
+          console.log('✅ Score data sent to parent window');
+          
+        } catch (e) {
+          console.error('❌ Failed to post score to parent window:', e);
         }
-      }, callbackData);
+      } else {
+        console.warn('⚠️ Not in iframe - cannot send score to Telegram');
+      }
     },
     paymentFormSubmit: function (formData) {
       if (!formData ||
