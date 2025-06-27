@@ -87,13 +87,16 @@ export const useTelegramGame = () => {
         try {
             // Validate and clean score
             const finalScore = Math.max(0, Math.floor(score));
-            console.log(`📊 Reporting score via TelegramGameProxy.postScore(): ${finalScore}`);
+            console.log(`🎮 GAME OVER - Player achieved score: ${finalScore}`);
+            console.log(`📤 Sending score to Telegram via TelegramGameProxy.postScore()`);
 
             // STEP 3: Use TelegramGameProxy.postScore() - the official method
             // This will trigger a callback_query to the bot with the score
             if (window.TelegramGameProxy && typeof window.TelegramGameProxy.postScore === 'function') {
+                console.log(`🚀 Calling TelegramGameProxy.postScore(${finalScore})`);
                 window.TelegramGameProxy.postScore(finalScore);
-                console.log('✅ Score sent via TelegramGameProxy.postScore()');
+                console.log('✅ TelegramGameProxy.postScore() called successfully');
+                console.log('⏳ Waiting for bot to receive and process the score...');
                 return true;
             }
 

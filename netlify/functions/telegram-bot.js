@@ -128,7 +128,9 @@ Ready to become the ultimate Burger Boss? 🏆`;
         // Handle score submission from TelegramGameProxy.postScore()
         // This arrives as a callback_query after postScore() is called
         if (callbackQuery.data && callbackQuery.data.includes('score')) {
-          console.log('🎯 Score submission detected in callback data');
+          console.log('� Score submission received from TelegramGameProxy.postScore()');
+          console.log('📊 Raw callback data:', callbackQuery.data);
+          console.log('👤 User:', callbackQuery.from.first_name, `(${callbackQuery.from.id})`);
           
           // STEP 4: Acknowledge callback immediately (≤ 10s) 
           await ctx.answerCallbackQuery({
@@ -142,19 +144,23 @@ Ready to become the ultimate Burger Boss? 🏆`;
             // Try to parse as JSON first
             const gameData = JSON.parse(callbackQuery.data);
             score = Math.floor(gameData.score);
+            console.log('📊 Parsed score from JSON:', score);
           } catch (parseError) {
             // Fallback: extract number from string
             const scoreMatch = callbackQuery.data.match(/score[:\s]*(\d+)/i);
             if (scoreMatch) {
               score = parseInt(scoreMatch[1]);
+              console.log('📊 Parsed score from string match:', score);
             }
           }
 
           if (typeof score === 'number' && score >= 0) {
+            console.log(`🎯 Valid score detected: ${score} - proceeding to save to Telegram Games API`);
             // STEP 5: Write score to Telegram's table
             await writeGameScore(ctx, score, callbackQuery);
           } else {
             console.error('❌ Invalid score data in callback:', callbackQuery.data);
+            console.error('❌ Parsed score value:', score, typeof score);
             // Send error feedback
             await ctx.answerCallbackQuery({
               text: "❌ Invalid score data received",
@@ -205,7 +211,9 @@ Ready to become the ultimate Burger Boss? 🏆`;
         const userId = ctx.from.id;
         const userName = ctx.from.first_name;
         
-        console.log(`🏆 Writing score ${score} for user ${userName} (${userId})`);
+        console.log(`� GAME OVER - Writing final score to Telegram Games API`);
+        console.log(`👤 Player: ${userName} (${userId})`);
+        console.log(`📊 Final Score: ${score}`);
 
         // STEP 5: Call setGameScore with correct Grammy.js parameters
         // Grammy.js expects: setGameScore(chat_id, message_id, user_id, score, options)
@@ -214,7 +222,7 @@ Ready to become the ultimate Burger Boss? 🏆`;
         if (callbackQuery.message) {
           const chatId = callbackQuery.message.chat.id;
           const messageId = callbackQuery.message.message_id;
-          console.log(`📍 Score scoped to chat ${chatId}, message ${messageId}`);
+          console.log(`📍 Saving to chat message - Chat: ${chatId}, Message: ${messageId}`);
           
           result = await ctx.api.setGameScore(
             chatId,     // chat_id
@@ -224,7 +232,7 @@ Ready to become the ultimate Burger Boss? 🏆`;
             { force: true } // options
           );
         } else if (callbackQuery.inline_message_id) {
-          console.log(`📍 Score scoped to inline message ${callbackQuery.inline_message_id}`);
+          console.log(`📍 Saving to inline message - ID: ${callbackQuery.inline_message_id}`);
           
           // For inline messages, use setGameScoreInline
           result = await ctx.api.setGameScoreInline(
@@ -237,7 +245,8 @@ Ready to become the ultimate Burger Boss? 🏆`;
           throw new Error('No valid message identifiers found for score scoping');
         }
         
-        console.log(`✅ Score written successfully:`, result);
+        console.log(`✅ SCORE SAVED SUCCESSFULLY to Telegram Games API:`, result);
+        console.log(`🏆 Score ${score} for ${userName} is now in the leaderboard!`);
 
         // Send success feedback
         const message = getScoreMessage(userName, score);
@@ -247,7 +256,9 @@ Ready to become the ultimate Burger Boss? 🏆`;
         });
 
       } catch (error) {
-        console.error('❌ Error writing game score:', error);
+        console.error('❌ FAILED TO SAVE SCORE to Telegram Games API:', error);
+        console.error('📊 Score that failed to save:', score);
+        console.error('👤 User that failed to save:', ctx.from.first_name, ctx.from.id);
         
         // STEP 7: Handle reliability issues
         let errorMessage = '❌ Failed to save score';
