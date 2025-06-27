@@ -144,14 +144,15 @@ Ready to become the ultimate Burger Boss? 🏆`;
           return;
         }
 
-        // Handle score submission from TelegramGameProxy.postScore()
-        // This arrives as a callback_query after postScore() is called
-        // Check for JSON format specifically to avoid matching button names
+        // Handle score submission from the game
+        // This arrives as a callback_query after the game sends score data
+        // Check for various score formats: JSON, simple format, or string match
         if (callbackQuery.data && (
             callbackQuery.data.startsWith('{"type":"game_score"') ||
+            callbackQuery.data.startsWith('game_score:') ||
             callbackQuery.data.match(/^.*"score"\s*:\s*\d+.*$/)
         )) {
-          console.log('🎯 SCORE SUBMISSION DETECTED from TelegramGameProxy.postScore()');
+          console.log('🎯 SCORE SUBMISSION DETECTED from game');
           console.log('📊 Raw callback data:', callbackQuery.data);
           console.log('👤 User:', callbackQuery.from.first_name, `(${callbackQuery.from.id})`);
           console.log('💬 Chat ID:', callbackQuery.message?.chat?.id);
@@ -164,20 +165,30 @@ Ready to become the ultimate Burger Boss? 🏆`;
             show_alert: false
           });
 
-          // Extract score from callback data (this comes from TelegramGameProxy.postScore)
+          // Extract score from callback data
           let score;
           try {
-            // Try to parse as JSON first
-            const gameData = JSON.parse(callbackQuery.data);
-            score = Math.floor(gameData.score);
-            console.log('📊 Parsed score from JSON:', score);
-          } catch (parseError) {
-            // Fallback: extract number from string
-            const scoreMatch = callbackQuery.data.match(/score[:\s]*(\d+)/i);
-            if (scoreMatch) {
-              score = parseInt(scoreMatch[1]);
-              console.log('📊 Parsed score from string match:', score);
+            // Try simple format first: "game_score:42"
+            if (callbackQuery.data.startsWith('game_score:')) {
+              score = parseInt(callbackQuery.data.split(':')[1]);
+              console.log('📊 Parsed score from simple format:', score);
             }
+            // Try to parse as JSON
+            else if (callbackQuery.data.startsWith('{')) {
+              const gameData = JSON.parse(callbackQuery.data);
+              score = Math.floor(gameData.score);
+              console.log('📊 Parsed score from JSON:', score);
+            }
+            // Fallback: extract number from string
+            else {
+              const scoreMatch = callbackQuery.data.match(/score[:\s]*(\d+)/i);
+              if (scoreMatch) {
+                score = parseInt(scoreMatch[1]);
+                console.log('📊 Parsed score from string match:', score);
+              }
+            }
+          } catch (parseError) {
+            console.error('❌ Error parsing score data:', parseError);
           }
 
           if (typeof score === 'number' && score >= 0) {

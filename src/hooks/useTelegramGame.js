@@ -72,8 +72,8 @@ export const useTelegramGame = () => {
     }, []);
 
     /**
-     * STEP 3: Report score using TelegramGameProxy.postScore()
-     * This is the ONLY method we use for score reporting in Telegram Games
+     * Report score using direct callback query method (same as test button)
+     * This bypasses the unreliable TelegramGameProxy.postScore() method
      * @param {number} score - The player's final score
      * @returns {Promise<boolean>} - Whether the score was successfully reported
      */
@@ -94,70 +94,45 @@ export const useTelegramGame = () => {
             // Validate and clean score
             const finalScore = Math.max(0, Math.floor(score));
             console.log(`🎮 GAME OVER - Player achieved score: ${finalScore}`);
-            console.log(`📤 Sending score to Telegram via TelegramGameProxy.postScore()`);
-
-            // STEP 3: Use TelegramGameProxy.postScore() - THE CORRECT METHOD for score submission
-            // According to Telegram documentation, postScore is for leaderboard submission
-            // shareScore is only for sharing the game link, NOT for submitting scores
             
-            if (window.TelegramGameProxy) {
-                // Use postScore - the correct method for score submission
-                if (typeof window.TelegramGameProxy.postScore === 'function') {
-                    console.log(`🚀 Calling TelegramGameProxy.postScore(${finalScore})`);
-                    console.log('🔍 Environment check:');
-                    console.log('  - TelegramGameProxy exists:', !!window.TelegramGameProxy);
-                    console.log('  - postScore method exists:', typeof window.TelegramGameProxy?.postScore);
-                    console.log('  - Available methods:', window.TelegramGameProxy ? Object.keys(window.TelegramGameProxy) : 'none');
-                    console.log('  - Is iframe:', window.parent !== window);
-                    console.log('  - URL:', window.location.href);
-                    console.log('  - User agent contains "Telegram":', navigator.userAgent.includes('Telegram'));
-                    
-                    try {
-                        // Add a timestamp to track this specific call
-                        const callId = 'score_' + Date.now();
-                        console.log(`🎯 ${callId}: Starting postScore call`);
-                        
-                        window.TelegramGameProxy.postScore(finalScore);
-                        
-                        console.log(`✅ ${callId}: TelegramGameProxy.postScore() completed`);
-                        console.log('⏳ Now waiting for bot to receive callback query...');
-                        console.log('🎯 Expected bot log: "SCORE SUBMISSION DETECTED"');
-                        
-                        // Set a timeout to check if the bot received anything
-                        setTimeout(() => {
-                            console.log(`⏰ ${callId}: 5 seconds passed - check bot logs for callback query`);
-                        }, 5000);
-                        
-                        return true;
-                    } catch (error) {
-                        console.error('❌ postScore failed:', error);
-                    }
-                } else {
-                    console.error('❌ TelegramGameProxy.postScore is not available');
-                    console.error('❌ Available methods:', Object.keys(window.TelegramGameProxy));
-                }
-            }
-
-            // More detailed error checking
-            if (window.TelegramGameProxy) {
-                console.error('❌ TelegramGameProxy exists but postScore is not a function');
-                console.error('❌ TelegramGameProxy methods:', Object.keys(window.TelegramGameProxy));
-                console.error('❌ postScore type:', typeof window.TelegramGameProxy.postScore);
+            // Add a timestamp to track this specific call
+            const callId = 'score_' + Date.now();
+            console.log(`🎯 ${callId}: Starting score submission using direct callback query`);
+            console.log('🔍 Environment check:');
+            console.log('  - Is iframe:', window.parent !== window);
+            console.log('  - URL:', window.location.href);
+            console.log('  - User agent contains "Telegram":', navigator.userAgent.includes('Telegram'));
+            
+            // NEW APPROACH: Send score via callback query like the test button
+            // This mimics exactly what the working test button does
+            if (window.parent && window.parent !== window) {
+                // Send score data in the format that the bot expects
+                const scoreData = `game_score:${finalScore}`;
+                
+                console.log(`📤 ${callId}: Sending score via callback query to parent window`);
+                console.log(`📊 Score data: ${scoreData}`);
+                
+                // Send the score as a callback query to the parent (Telegram)
+                // This is the same mechanism the test button uses successfully
+                window.parent.postMessage({
+                    eventType: 'callback_query',
+                    eventData: scoreData
+                }, '*');
+                
+                console.log(`✅ ${callId}: Score callback query sent to Telegram`);
+                console.log('⏳ Waiting for bot to receive callback query...');
+                console.log('🎯 Expected bot log: "SCORE SUBMISSION DETECTED"');
+                
+                // Set a timeout to check if the bot received anything
+                setTimeout(() => {
+                    console.log(`⏰ ${callId}: 5 seconds passed - check bot logs for callback query`);
+                }, 5000);
+                
+                return true;
             } else {
-                console.error('❌ TelegramGameProxy not available at all');
-            }
-
-            // Check if we're in Telegram but proxy not available
-            if (window.parent !== window) {
-                console.error('❌ In Telegram iframe but TelegramGameProxy not functional');
-                console.error('🔧 Check: Game URL must exactly match what was registered with BotFather');
-                console.error('🔧 Current URL:', window.location.href);
-                console.error('🔧 Expected URL should match the one set in BotFather');
+                console.warn('⚠️ Not in iframe - cannot send score to Telegram');
                 return false;
             }
-
-            console.warn('❌ TelegramGameProxy not available - not in Telegram environment');
-            return false;
 
         } catch (error) {
             console.error('❌ Failed to report score:', error);
