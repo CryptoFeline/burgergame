@@ -536,6 +536,8 @@ Built with Telegram's Games API 🚀`;
     // Handle POST requests (webhook updates and direct score submission)
     if (event.httpMethod === 'POST') {
       let requestBody;
+      let update;
+      
       try {
         requestBody = JSON.parse(event.body);
         
@@ -604,7 +606,7 @@ Built with Telegram's Games API 🚀`;
         }
         
         // If not a direct score submission, treat as webhook update
-        const update = requestBody;
+        update = requestBody;
         console.log('📨 Webhook update received');
         
         // Enhanced debugging for all callback queries
@@ -649,8 +651,12 @@ Built with Telegram's Games API 🚀`;
         };
       }
       
-      // Process the update
-      await bot.handleUpdate(update);
+      // Process the update (only if we have a valid update)
+      if (update) {
+        await bot.handleUpdate(update);
+      } else {
+        console.log('⚠️ No valid update to process');
+      }
       
       return {
         statusCode: 200,
