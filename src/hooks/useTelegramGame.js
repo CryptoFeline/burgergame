@@ -190,7 +190,44 @@ export const useTelegramGame = () => {
             const callId = 'game_score_' + Date.now();
             console.log(`🎯 ${callId}: TESTING TelegramGameProxy.postScore() ONLY`);
             
-            // FIRST: Send debug info to help track if the game is working
+            // FIRST: Try the new session-based score submission
+            try {
+                // Get session ID from URL parameters
+                const urlParams = new URLSearchParams(window.location.search);
+                const sessionId = urlParams.get('sessionId');
+                
+                if (sessionId) {
+                    console.log(`🎯 ${callId}: Found session ID, attempting session-based score submission`);
+                    
+                    const sessionResponse = await fetch('/.netlify/functions/game-session', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            action: 'submit_score',
+                            sessionId: sessionId,
+                            score: finalScore
+                        })
+                    });
+                    
+                    if (sessionResponse.ok) {
+                        const result = await sessionResponse.json();
+                        console.log(`✅ ${callId}: Session-based score submission successful!`, result);
+                        
+                        if (window.Telegram?.WebApp?.showAlert) {
+                            window.Telegram.WebApp.showAlert(`🎉 Score ${finalScore} submitted!`);
+                        }
+                        return true;
+                    } else {
+                        console.log(`⚠️ ${callId}: Session-based submission failed, trying fallback`);
+                    }
+                } else {
+                    console.log(`⚠️ ${callId}: No session ID found in URL`);
+                }
+            } catch (sessionError) {
+                console.log(`⚠️ ${callId}: Session-based submission error:`, sessionError.message);
+            }
+            
+            // FALLBACK: Send debug info to help track if the game is working
             try {
                 const debugData = {
                     score: finalScore,
@@ -206,15 +243,33 @@ export const useTelegramGame = () => {
                         in_iframe: window.parent !== window,
                         referrer: document.referrer,
                         host: window.location.host
+                    },
+                    // Extract URL parameters that might contain Telegram context
+                    url_params: {
+                        search: window.location.search,
+                        hash: window.location.hash,
+                        full_url: window.location.href
                     }
                 };
                 
-                await fetch('/.netlify/functions/debug-game', {
+                const response = await fetch('/.netlify/functions/debug-game', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(debugData)
                 });
-                console.log(`🔍 ${callId}: Debug data sent to server`);
+                
+                const result = await response.json();
+                console.log(`🔍 ${callId}: Debug data sent to server, response:`, result);
+                
+                // Check if the server successfully bridged the score
+                if (result.success && result.note && result.note.includes('bridged')) {
+                    console.log(`✅ ${callId}: Score successfully bridged to bot via debug endpoint!`);
+                    if (window.Telegram?.WebApp?.showAlert) {
+                        window.Telegram.WebApp.showAlert(`🎉 Score ${finalScore} submitted!`);
+                    }
+                    return true;
+                }
+                
             } catch (debugError) {
                 console.log(`⚠️ ${callId}: Debug endpoint failed:`, debugError.message);
             }

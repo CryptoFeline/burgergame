@@ -136,6 +136,49 @@ Ready to become the ultimate Burger Boss? 🏆`;
         if (callbackQuery.game_short_name) {
           console.log(`🎮 Game launch: ${callbackQuery.game_short_name} by user ${ctx.from.id}`);
           
+          // Store game session context for later score submission
+          try {
+            const sessionData = {
+              action: 'store',
+              userId: ctx.from.id,
+              chatId: callbackQuery.message?.chat?.id,
+              messageId: callbackQuery.message?.message_id,
+              gameShortName: callbackQuery.game_short_name,
+              userName: ctx.from.first_name
+            };
+            
+            console.log('💾 Storing game session context:', sessionData);
+            
+            // Store session context via internal API call
+            const sessionResponse = await fetch('https://bossburgerbuild.netlify.app/.netlify/functions/game-session', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(sessionData)
+            });
+            
+            if (sessionResponse.ok) {
+              const sessionResult = await sessionResponse.json();
+              console.log('✅ Game session stored with ID:', sessionResult.sessionId);
+              
+              // Pass session ID to the game via URL parameter
+              await ctx.answerCallbackQuery({
+                url: `https://bossburgerbuild.netlify.app?v=${Date.now()}&sessionId=${sessionResult.sessionId}`
+              });
+              
+            } else {
+              console.log('⚠️ Failed to store game session, launching without session');
+              await ctx.answerCallbackQuery({
+                url: `https://bossburgerbuild.netlify.app?v=${Date.now()}`
+              });
+            }
+            
+          } catch (sessionError) {
+            console.log('⚠️ Game session storage error:', sessionError.message);
+            await ctx.answerCallbackQuery({
+              url: `https://bossburgerbuild.netlify.app?v=${Date.now()}`
+            });
+          }
+          
           // Question 4: Log chat type and context
           console.log('🔍 === ANSWERING QUESTION 4: Chat Context Analysis ===');
           console.log('📍 Chat details:', {
@@ -153,10 +196,6 @@ Ready to become the ultimate Burger Boss? 🏆`;
           });
           console.log('🔍 === END QUESTION 4 ANALYSIS ===');
           
-          // STEP 4: Acknowledge callback immediately (≤ 10s)
-          await ctx.answerCallbackQuery({
-            url: "https://bossburgerbuild.netlify.app?v=" + Date.now()
-          });
           return;
         }
 
