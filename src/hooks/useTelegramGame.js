@@ -72,8 +72,8 @@ export const useTelegramGame = () => {
     }, []);
 
     /**
-     * Report score using TelegramGameProxy.postScore() method
-     * This is the standard Telegram Games API method for score submission
+     * Report score by directly calling the bot's webhook (bypassing TelegramGameProxy)
+     * This ensures the score reaches the bot exactly like the test button does
      * @param {number} score - The player's final score
      * @returns {Promise<boolean>} - Whether the score was successfully reported
      */
@@ -96,36 +96,84 @@ export const useTelegramGame = () => {
             console.log(`🎮 GAME OVER - Player achieved score: ${finalScore}`);
             
             // Add a timestamp to track this specific call
-            const callId = 'score_' + Date.now();
-            console.log(`🎯 ${callId}: Starting score submission using TelegramGameProxy.postScore()`);
-            console.log('🔍 Environment check:');
-            console.log('  - Is iframe:', window.parent !== window);
-            console.log('  - URL:', window.location.href);
-            console.log('  - TelegramGameProxy available:', !!window.TelegramGameProxy);
-            console.log('  - postScore method available:', typeof window.TelegramGameProxy?.postScore);
+            const callId = 'game_score_' + Date.now();
+            console.log(`🎯 ${callId}: DIRECT BOT WEBHOOK APPROACH for game score submission`);
+            console.log(`📊 ${callId}: Score to submit: ${finalScore}`);
             
-            // Use the standard TelegramGameProxy.postScore() method
-            if (window.TelegramGameProxy && typeof window.TelegramGameProxy.postScore === 'function') {
-                console.log(`📤 ${callId}: Calling TelegramGameProxy.postScore(${finalScore})`);
+            // Get the game context from URL or Telegram data
+            let chatId, messageId, userId;
+            
+            // Try to extract from URL hash parameters (Telegram games pass these)
+            try {
+                const urlParams = new URLSearchParams(window.location.hash.substring(1));
+                chatId = urlParams.get('chat_id');
+                messageId = urlParams.get('message_id');
+                userId = urlParams.get('user_id');
                 
-                // This will trigger a callback query that the bot will handle
-                window.TelegramGameProxy.postScore(finalScore);
+                console.log('🔍 URL params extracted:');
+                console.log('  - chat_id:', chatId);
+                console.log('  - message_id:', messageId);
+                console.log('  - user_id:', userId);
+            } catch (e) {
+                console.log('⚠️ Could not extract URL params:', e);
+            }
+            
+            // If we have the necessary data, call the bot webhook directly
+            if (chatId && messageId && userId) {
+                const webhookUrl = 'https://bossburgerbuild.netlify.app/.netlify/functions/telegram-bot';
                 
-                console.log(`✅ ${callId}: TelegramGameProxy.postScore() called successfully`);
-                console.log('⏳ Waiting for bot to receive callback query...');
-                console.log('🎯 Expected bot log: "SCORE SUBMISSION DETECTED"');
+                // Create a callback query update like Telegram would send
+                const update = {
+                    update_id: Date.now(),
+                    callback_query: {
+                        id: callId,
+                        from: {
+                            id: parseInt(userId),
+                            first_name: 'Player' // Will be overridden by bot if needed
+                        },
+                        message: {
+                            message_id: parseInt(messageId),
+                            chat: {
+                                id: parseInt(chatId)
+                            }
+                        },
+                        data: `game_score:${finalScore}`,
+                        game_short_name: 'buildergame'
+                    }
+                };
                 
-                // Set a timeout to check if the bot received anything
-                setTimeout(() => {
-                    console.log(`⏰ ${callId}: 5 seconds passed - check bot logs for callback query`);
-                }, 5000);
+                console.log(`📤 ${callId}: Sending direct webhook call to bot`);
+                console.log(`📊 ${callId}: Update data:`, update);
                 
-                return true;
+                // Send to bot webhook
+                const response = await fetch(webhookUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(update)
+                });
+                
+                if (response.ok) {
+                    console.log(`✅ ${callId}: Bot webhook called successfully`);
+                    console.log(`🎯 ${callId}: Score should now be processed by bot`);
+                    return true;
+                } else {
+                    console.error(`❌ ${callId}: Bot webhook failed:`, response.status, response.statusText);
+                    return false;
+                }
             } else {
-                console.error('❌ TelegramGameProxy.postScore not available');
-                console.error('❌ TelegramGameProxy:', window.TelegramGameProxy);
-                console.error('❌ Available methods:', window.TelegramGameProxy ? Object.keys(window.TelegramGameProxy) : 'none');
-                return false;
+                // Fallback: try TelegramGameProxy.postScore if available
+                console.log(`🔄 ${callId}: Missing context data, trying TelegramGameProxy fallback`);
+                
+                if (window.TelegramGameProxy && typeof window.TelegramGameProxy.postScore === 'function') {
+                    console.log(`📤 ${callId}: Using TelegramGameProxy.postScore(${finalScore})`);
+                    window.TelegramGameProxy.postScore(finalScore);
+                    return true;
+                } else {
+                    console.error(`❌ ${callId}: No valid method available for score submission`);
+                    return false;
+                }
             }
 
         } catch (error) {
