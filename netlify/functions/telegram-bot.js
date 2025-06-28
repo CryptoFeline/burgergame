@@ -513,7 +513,7 @@ Ready to become the ultimate Burger Boss? 🏆`;
 
 Built with Telegram's Games API 🚀`;
 
-      await ctx.reply(helpText, { parse_mode: 'Markdown' });
+    await ctx.reply(helpText, { parse_mode: 'Markdown' });
     });
 
     // Handle POST requests (webhook updates)
@@ -587,80 +587,80 @@ Built with Telegram's Games API 🚀`;
       body: JSON.stringify({ error: 'Internal server error', details: error.message })
     };
   }
+};
   
-  // Handle direct score submission from game (bypassing callback queries)
-  if (event.httpMethod === 'POST') {
-    let requestBody;
-    try {
-      requestBody = JSON.parse(event.body);
-      console.log('📨 POST request received');
+// Handle direct score submission from game (bypassing callback queries)
+if (event.httpMethod === 'POST') {
+  let requestBody;
+  try {
+    requestBody = JSON.parse(event.body);
+    console.log('📨 POST request received');
+    
+    // Check if this is a direct score submission from the game
+    if (requestBody.method === 'setGameScore' && requestBody.source === 'game_over') {
+      console.log('🎯 DIRECT SCORE SUBMISSION from game detected');
+      console.log('📊 Score data:', requestBody);
       
-      // Check if this is a direct score submission from the game
-      if (requestBody.method === 'setGameScore' && requestBody.source === 'game_over') {
-        console.log('🎯 DIRECT SCORE SUBMISSION from game detected');
-        console.log('📊 Score data:', requestBody);
+      try {
+        // Extract data from the direct call
+        const { score, chat_id, message_id, user_id, force } = requestBody;
         
-        try {
-          // Extract data from the direct call
-          const { score, chat_id, message_id, user_id, force } = requestBody;
+        console.log(`📊 Direct score submission: ${score} for user ${user_id}`);
+        console.log(`📍 Target: chat ${chat_id}, message ${message_id}`);
+        
+        // Call setGameScore directly like writeGameScore does
+        let result;
+        
+        if (chat_id && message_id && user_id) {
+          result = await bot.api.setGameScore(
+            parseInt(chat_id),      // chat_id
+            parseInt(message_id),   // message_id  
+            parseInt(user_id),      // user_id
+            parseInt(score),        // score
+            { force: force || true } // options
+          );
           
-          console.log(`📊 Direct score submission: ${score} for user ${user_id}`);
-          console.log(`📍 Target: chat ${chat_id}, message ${message_id}`);
+          console.log(`✅ DIRECT SCORE SAVED SUCCESSFULLY:`, result);
           
-          // Call setGameScore directly like writeGameScore does
-          let result;
-          
-          if (chat_id && message_id && user_id) {
-            result = await bot.api.setGameScore(
-              parseInt(chat_id),      // chat_id
-              parseInt(message_id),   // message_id  
-              parseInt(user_id),      // user_id
-              parseInt(score),        // score
-              { force: force || true } // options
-            );
-            
-            console.log(`✅ DIRECT SCORE SAVED SUCCESSFULLY:`, result);
-            
-            // Send service message to chat
-            try {
-              if (chat_id !== user_id) { // Only in group chats, not private
-                await bot.api.sendMessage(chat_id, `🎮 Player just scored ${score} points in Boss Burger Builder!`, {
-                  reply_to_message_id: parseInt(message_id)
-                });
-                console.log(`📢 Service message sent to chat ${chat_id}`);
-              }
-            } catch (serviceError) {
-              console.log('⚠️ Could not send service message:', serviceError.message);
+          // Send service message to chat
+          try {
+            if (chat_id !== user_id) { // Only in group chats, not private
+              await bot.api.sendMessage(chat_id, `🎮 Player just scored ${score} points in Boss Burger Builder!`, {
+                reply_to_message_id: parseInt(message_id)
+              });
+              console.log(`📢 Service message sent to chat ${chat_id}`);
             }
-            
-            return {
-              statusCode: 200,
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ 
-                success: true, 
-                message: 'Score saved successfully',
-                result: result 
-              })
-            };
-          } else {
-            throw new Error('Missing required parameters: chat_id, message_id, or user_id');
+          } catch (serviceError) {
+            console.log('⚠️ Could not send service message:', serviceError.message);
           }
-        } catch (scoreError) {
-          console.error('❌ Direct score submission failed:', scoreError);
           
           return {
-            statusCode: 400,
+            statusCode: 200,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
-              success: false, 
-              error: scoreError.message 
+              success: true, 
+              message: 'Score saved successfully',
+              result: result 
             })
           };
+        } else {
+          throw new Error('Missing required parameters: chat_id, message_id, or user_id');
         }
+      } catch (scoreError) {
+        console.error('❌ Direct score submission failed:', scoreError);
+        
+        return {
+          statusCode: 400,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            success: false, 
+            error: scoreError.message 
+          })
+        };
       }
-    } catch (parseError) {
-      // Not JSON or not our direct call, continue to normal webhook handling
-      console.log('📨 Not a direct score call, continuing to webhook handling');
     }
+  } catch (parseError) {
+    // Not JSON or not our direct call, continue to normal webhook handling
+    console.log('📨 Not a direct score call, continuing to webhook handling');
   }
-};
+}
