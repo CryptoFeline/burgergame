@@ -200,12 +200,8 @@
       // Ensure score is valid
       const finalScore = Math.max(0, Math.floor(score));
       
-      // Format the callback data exactly as the bot expects
-      const callbackData = JSON.stringify({
-        type: 'game_score',
-        score: finalScore,
-        timestamp: Date.now()
-      });
+      // Format the callback data in the simple format the bot expects
+      const callbackData = `game_score:${finalScore}`;
       
       console.log('📤 Simulating Telegram callback query for score submission');
       console.log('📊 Score data:', callbackData);

@@ -72,8 +72,8 @@ export const useTelegramGame = () => {
     }, []);
 
     /**
-     * Report score using direct callback query method (same as test button)
-     * This bypasses the unreliable TelegramGameProxy.postScore() method
+     * Report score using TelegramGameProxy.postScore() method
+     * This is the standard Telegram Games API method for score submission
      * @param {number} score - The player's final score
      * @returns {Promise<boolean>} - Whether the score was successfully reported
      */
@@ -97,29 +97,21 @@ export const useTelegramGame = () => {
             
             // Add a timestamp to track this specific call
             const callId = 'score_' + Date.now();
-            console.log(`🎯 ${callId}: Starting score submission using direct callback query`);
+            console.log(`🎯 ${callId}: Starting score submission using TelegramGameProxy.postScore()`);
             console.log('🔍 Environment check:');
             console.log('  - Is iframe:', window.parent !== window);
             console.log('  - URL:', window.location.href);
-            console.log('  - User agent contains "Telegram":', navigator.userAgent.includes('Telegram'));
+            console.log('  - TelegramGameProxy available:', !!window.TelegramGameProxy);
+            console.log('  - postScore method available:', typeof window.TelegramGameProxy?.postScore);
             
-            // NEW APPROACH: Send score via callback query like the test button
-            // This mimics exactly what the working test button does
-            if (window.parent && window.parent !== window) {
-                // Send score data in the format that the bot expects
-                const scoreData = `game_score:${finalScore}`;
+            // Use the standard TelegramGameProxy.postScore() method
+            if (window.TelegramGameProxy && typeof window.TelegramGameProxy.postScore === 'function') {
+                console.log(`📤 ${callId}: Calling TelegramGameProxy.postScore(${finalScore})`);
                 
-                console.log(`📤 ${callId}: Sending score via callback query to parent window`);
-                console.log(`📊 Score data: ${scoreData}`);
+                // This will trigger a callback query that the bot will handle
+                window.TelegramGameProxy.postScore(finalScore);
                 
-                // Send the score as a callback query to the parent (Telegram)
-                // This is the same mechanism the test button uses successfully
-                window.parent.postMessage({
-                    eventType: 'callback_query',
-                    eventData: scoreData
-                }, '*');
-                
-                console.log(`✅ ${callId}: Score callback query sent to Telegram`);
+                console.log(`✅ ${callId}: TelegramGameProxy.postScore() called successfully`);
                 console.log('⏳ Waiting for bot to receive callback query...');
                 console.log('🎯 Expected bot log: "SCORE SUBMISSION DETECTED"');
                 
@@ -130,7 +122,9 @@ export const useTelegramGame = () => {
                 
                 return true;
             } else {
-                console.warn('⚠️ Not in iframe - cannot send score to Telegram');
+                console.error('❌ TelegramGameProxy.postScore not available');
+                console.error('❌ TelegramGameProxy:', window.TelegramGameProxy);
+                console.error('❌ Available methods:', window.TelegramGameProxy ? Object.keys(window.TelegramGameProxy) : 'none');
                 return false;
             }
 
