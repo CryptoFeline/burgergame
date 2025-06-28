@@ -14,6 +14,20 @@ import { useAudio } from "./hooks/useAudio";
 import { usePreloader } from "./hooks/usePreloader";
 import { useTelegramGame } from "./hooks/useTelegramGame";
 
+// Global storage for Telegram game context
+let gameContext = null;
+
+// Function to store game context when game launches
+window.storeGameContext = function(context) {
+    console.log('📦 Storing game context:', context);
+    gameContext = context;
+};
+
+// Function to get stored game context
+window.getGameContext = function() {
+    return gameContext;
+};
+
 function App() {
     // Preloader system
     const { isLoading, progress } = usePreloader();
@@ -405,7 +419,7 @@ function App() {
             return;
         }
         
-        // Play audio BEFORE any state changes (like handlePause does)
+        // Play audio BEFORE any state changes
         // Now update state
         setLives(0);
         handleGameOver();

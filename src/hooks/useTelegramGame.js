@@ -72,8 +72,8 @@ export const useTelegramGame = () => {
     }, []);
 
     /**
-     * Report score by directly calling the bot's webhook (bypassing TelegramGameProxy)
-     * This ensures the score reaches the bot exactly like the test button does
+     * Report score by calling the bot directly like writeGameScore does
+     * This bypasses Telegram's callback system and calls our bot webhook directly
      * @param {number} score - The player's final score
      * @returns {Promise<boolean>} - Whether the score was successfully reported
      */
@@ -97,157 +97,88 @@ export const useTelegramGame = () => {
             
             // Add a timestamp to track this specific call
             const callId = 'game_score_' + Date.now();
-            console.log(`🎯 ${callId}: DIRECT BOT WEBHOOK APPROACH for game score submission`);
+            console.log(`🎯 ${callId}: DIRECT BOT API CALL like writeGameScore()`);
             console.log(`📊 ${callId}: Score to submit: ${finalScore}`);
             
-            // Get the game context from URL or Telegram data
+            // Get game context from current URL and environment
+            // Extract what we can from the current Telegram environment
+            const currentUrl = window.location.href;
+            console.log('🔍 Current URL for context extraction:', currentUrl);
+            
+            // Try to get context from URL parameters or Telegram WebApp data
             let chatId, messageId, userId;
             
-            // Try to extract from URL hash parameters (Telegram games pass these)
+            // Method 1: Try URL parameters
             try {
-                console.log('🔍 Full URL:', window.location.href);
-                console.log('🔍 URL hash:', window.location.hash);
-                console.log('🔍 URL search:', window.location.search);
+                console.log('🔍 Checking URL hash:', window.location.hash);
+                console.log('🔍 Checking URL search:', window.location.search);
                 
-                // Try both hash and search parameters
-                let params;
-                if (window.location.hash) {
-                    params = new URLSearchParams(window.location.hash.substring(1));
-                    console.log('🔍 Using hash parameters');
-                } else if (window.location.search) {
-                    params = new URLSearchParams(window.location.search);
-                    console.log('🔍 Using search parameters');
-                } else {
-                    console.log('⚠️ No URL parameters found');
-                    params = new URLSearchParams();
-                }
+                const hashParams = new URLSearchParams(window.location.hash.substring(1));
+                const searchParams = new URLSearchParams(window.location.search);
                 
-                chatId = params.get('chat_id');
-                messageId = params.get('message_id'); 
-                userId = params.get('user_id');
+                chatId = hashParams.get('chat_id') || searchParams.get('chat_id');
+                messageId = hashParams.get('message_id') || searchParams.get('message_id');
+                userId = hashParams.get('user_id') || searchParams.get('user_id');
                 
-                console.log('🔍 URL params extracted:');
-                console.log('  - chat_id:', chatId);
-                console.log('  - message_id:', messageId);
-                console.log('  - user_id:', userId);
-                
-                // Also check for alternative parameter names that Telegram might use
-                if (!chatId) chatId = params.get('chat');
-                if (!messageId) messageId = params.get('message');
-                if (!userId) userId = params.get('user');
-                
-                console.log('🔍 After checking alternatives:');
-                console.log('  - chat_id:', chatId);
-                console.log('  - message_id:', messageId);
-                console.log('  - user_id:', userId);
+                console.log('� Extracted from URL - chatId:', chatId, 'messageId:', messageId, 'userId:', userId);
             } catch (e) {
-                console.log('⚠️ Could not extract URL params:', e);
+                console.log('⚠️ URL parameter extraction failed:', e);
             }
             
-            // If we have the necessary data, call the bot webhook directly
-            if (chatId && messageId && userId) {
-                const webhookUrl = 'https://bossburgerbuild.netlify.app/.netlify/functions/telegram-bot';
-                
-                // Create a callback query update like Telegram would send
-                const update = {
-                    update_id: Date.now(),
-                    callback_query: {
-                        id: callId,
-                        from: {
-                            id: parseInt(userId),
-                            first_name: 'Player' // Will be overridden by bot if needed
-                        },
-                        message: {
-                            message_id: parseInt(messageId),
-                            chat: {
-                                id: parseInt(chatId)
-                            }
-                        },
-                        data: `game_score:${finalScore}`,
-                        game_short_name: 'buildergame'
-                    }
-                };
-                
-                console.log(`📤 ${callId}: Sending direct webhook call to bot`);
-                console.log(`📊 ${callId}: Update data:`, update);
-                
-                // Send to bot webhook
-                const response = await fetch(webhookUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(update)
-                });
-                
-                if (response.ok) {
-                    console.log(`✅ ${callId}: Bot webhook called successfully`);
-                    console.log(`🎯 ${callId}: Score should now be processed by bot`);
-                    return true;
-                } else {
-                    console.error(`❌ ${callId}: Bot webhook failed:`, response.status, response.statusText);
-                }
-            } else {
-                console.log(`⚠️ ${callId}: Missing context data (chatId: ${chatId}, messageId: ${messageId}, userId: ${userId})`);
-            }
-            
-            // FALLBACK 1: Try TelegramGameProxy.postScore if available
-            console.log(`🔄 ${callId}: Trying TelegramGameProxy.postScore fallback`);
-            
-            if (window.TelegramGameProxy && typeof window.TelegramGameProxy.postScore === 'function') {
-                console.log(`📤 ${callId}: Using TelegramGameProxy.postScore(${finalScore})`);
+            // Method 2: Try Telegram WebApp context
+            if ((!chatId || !messageId || !userId) && window.Telegram?.WebApp) {
                 try {
-                    window.TelegramGameProxy.postScore(finalScore);
-                    console.log(`✅ ${callId}: TelegramGameProxy.postScore called successfully`);
-                    return true;
-                } catch (e) {
-                    console.error(`❌ ${callId}: TelegramGameProxy.postScore failed:`, e);
-                }
-            } else {
-                console.log(`❌ ${callId}: TelegramGameProxy.postScore not available`);
-            }
-            
-            // FALLBACK 2: Try direct webhook with dummy data (last resort)
-            console.log(`🔄 ${callId}: Trying webhook with dummy context (last resort)`);
-            try {
-                const webhookUrl = 'https://bossburgerbuild.netlify.app/.netlify/functions/telegram-bot';
-                
-                // Create a minimal update that might still work
-                const fallbackUpdate = {
-                    update_id: Date.now(),
-                    callback_query: {
-                        id: callId,
-                        from: {
-                            id: 12345, // Dummy user ID
-                            first_name: 'GamePlayer'
-                        },
-                        data: `game_score:${finalScore}`,
-                        game_short_name: 'buildergame'
+                    const tg = window.Telegram.WebApp;
+                    if (tg.initDataUnsafe?.user?.id) {
+                        userId = tg.initDataUnsafe.user.id.toString();
+                        console.log('📱 Got userId from Telegram WebApp:', userId);
                     }
-                };
-                
-                console.log(`📤 ${callId}: Sending fallback webhook call`);
-                
-                const response = await fetch(webhookUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(fallbackUpdate)
-                });
-                
-                if (response.ok) {
-                    console.log(`✅ ${callId}: Fallback webhook succeeded`);
-                    return true;
-                } else {
-                    console.error(`❌ ${callId}: Fallback webhook failed:`, response.status);
+                    if (tg.initDataUnsafe?.chat?.id) {
+                        chatId = tg.initDataUnsafe.chat.id.toString();
+                        console.log('� Got chatId from Telegram WebApp:', chatId);
+                    }
+                } catch (e) {
+                    console.log('⚠️ Telegram WebApp extraction failed:', e);
                 }
-            } catch (fallbackError) {
-                console.error(`❌ ${callId}: Fallback webhook error:`, fallbackError);
             }
             
-            console.error(`❌ ${callId}: All score submission methods failed`);
-            return false;
+            // Method 3: Use direct bot endpoint with score submission
+            console.log(`� ${callId}: Making direct bot API call`);
+            
+            const botEndpoint = 'https://bossburgerbuild.netlify.app/.netlify/functions/telegram-bot';
+            
+            // Create the payload exactly like writeGameScore expects
+            const payload = {
+                method: 'setGameScore',
+                score: finalScore,
+                chat_id: chatId,
+                message_id: messageId,
+                user_id: userId,
+                force: true,
+                source: 'game_over'
+            };
+            
+            console.log(`� ${callId}: Payload to bot:`, payload);
+            
+            const response = await fetch(botEndpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload)
+            });
+            
+            const responseText = await response.text();
+            console.log(`📨 ${callId}: Bot response status:`, response.status);
+            console.log(`📨 ${callId}: Bot response:`, responseText);
+            
+            if (response.ok) {
+                console.log(`✅ ${callId}: Score successfully submitted to bot!`);
+                return true;
+            } else {
+                console.error(`❌ ${callId}: Bot rejected score submission:`, response.status, responseText);
+                return false;
+            }
 
         } catch (error) {
             console.error('❌ Failed to report score:', error);
