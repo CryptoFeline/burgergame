@@ -112,6 +112,7 @@ export const useTelegramGame = () => {
             
             // Try to get context from URL parameters (most reliable for Telegram Games)
             try {
+                const currentUrl = new URL(window.location.href);
                 const hashParams = new URLSearchParams(window.location.hash.substring(1));
                 const searchParams = new URLSearchParams(window.location.search);
                 
@@ -185,22 +186,22 @@ export const useTelegramGame = () => {
                 console.log(`⚠️ ${callId}: Insufficient Telegram context for server submission:`, telegramContext);
             }
             
-            // Method 3: Fallback - redirect to score handler (last resort)
-            console.log(`🔄 ${callId}: Using score handler redirect method`);
+            // Method 3: Fallback - reload with score in URL (last resort)
+            console.log(`🔄 ${callId}: Using URL reload fallback method`);
             
-            const scoreHandlerUrl = new URL('/score-handler.html', window.location.origin);
-            scoreHandlerUrl.searchParams.set('final_score', finalScore);
-            scoreHandlerUrl.searchParams.set('game_over', 'true');
-            scoreHandlerUrl.searchParams.set('timestamp', Date.now());
+            const currentUrl = new URL(window.location.href);
+            currentUrl.searchParams.set('final_score', finalScore);
+            currentUrl.searchParams.set('game_over', 'true');
+            currentUrl.searchParams.set('timestamp', Date.now());
             
-            console.log(`📤 ${callId}: Redirecting to score handler:`, scoreHandlerUrl.href);
+            console.log(`📤 ${callId}: Reloading with score URL:`, currentUrl.href);
             
-            // Prevent infinite redirects
+            // Prevent infinite reloads
             if (!sessionStorage.getItem('scoreSubmitted')) {
                 sessionStorage.setItem('scoreSubmitted', 'true');
-                window.location.href = scoreHandlerUrl.href;
+                window.location.href = currentUrl.href;
             } else {
-                console.log(`⚠️ ${callId}: Score already submitted, skipping redirect`);
+                console.log(`⚠️ ${callId}: Score already submitted, skipping reload`);
             }
             
             return true;

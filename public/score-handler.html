@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Score Handler</title>
+</head>
+<body>
+    <script>
+        console.log('🎯 Score handler loaded');
+        
+        // Check if we have score parameters in the URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const finalScore = urlParams.get('final_score');
+        const gameOver = urlParams.get('game_over');
+        
+        if (finalScore && gameOver === 'true') {
+            console.log('📊 Detected score in URL:', finalScore);
+            
+            // Try to send score via callback query
+            if (window.TelegramGameProxy && typeof window.TelegramGameProxy.postScore === 'function') {
+                console.log('📤 Sending score via TelegramGameProxy');
+                try {
+                    window.TelegramGameProxy.postScore(parseInt(finalScore));
+                    console.log('✅ Score sent successfully');
+                } catch (e) {
+                    console.error('❌ Failed to send score:', e);
+                }
+            }
+            
+            // Redirect back to clean game URL
+            setTimeout(() => {
+                const cleanUrl = window.location.origin + window.location.pathname;
+                window.location.replace(cleanUrl);
+            }, 1000);
+        } else {
+            // No score parameters, redirect to main game
+            const gameUrl = window.location.origin + window.location.pathname.replace('/score-handler.html', '/');
+            window.location.replace(gameUrl);
+        }
+    </script>
+</body>
+</html>
