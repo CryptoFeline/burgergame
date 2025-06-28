@@ -274,11 +274,20 @@ function App() {
     };
 
     const handlePause = () => {
+        console.log('🔘 STOP/PAUSE BUTTON CLICKED');
+        console.log('🔍 Current game state:');
+        console.log('  - gameFinished:', gameFinished);
+        console.log('  - gameStarted:', gameStarted);
+        console.log('  - score:', score);
+        console.log('  - successfulDrops:', successfulDrops);
+        
         if (gameFinished) {
             // Restart the game
+            console.log('🔄 Game already finished - restarting game');
             startNewGame();
         } else {
             // Stop the game immediately and show game over screen
+            console.log('⏹️ STOPPING ACTIVE GAME - should trigger handleGameOver()');
             playSound('gameOver');
             stopBackgroundMusic();
             
@@ -428,13 +437,14 @@ function App() {
         
         console.log('🎮 GAME OVER TRIGGERED!');
         console.log('📊 Final Score:', score);
-        console.log('� Successful Drops:', successfulDrops);
-        console.log('�🔍 Environment Check:');
+        console.log('📊 Successful Drops:', successfulDrops);
+        console.log('🔍 Environment Check:');
         console.log('  - isTelegramEnvironment:', isTelegramEnvironment);
         console.log('  - telegramReady:', telegramReady);
         console.log('  - window.TelegramGameProxy:', !!window.TelegramGameProxy);
         console.log('  - typeof window.TelegramGameProxy.postScore:', typeof window.TelegramGameProxy?.postScore);
         console.log('  - Current URL:', window.location.href);
+        console.log('  - URL hash:', window.location.hash);
         
         // Enhanced TelegramGameProxy debugging
         if (window.TelegramGameProxy) {

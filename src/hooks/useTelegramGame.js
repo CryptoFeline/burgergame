@@ -105,12 +105,38 @@ export const useTelegramGame = () => {
             
             // Try to extract from URL hash parameters (Telegram games pass these)
             try {
-                const urlParams = new URLSearchParams(window.location.hash.substring(1));
-                chatId = urlParams.get('chat_id');
-                messageId = urlParams.get('message_id');
-                userId = urlParams.get('user_id');
+                console.log('🔍 Full URL:', window.location.href);
+                console.log('🔍 URL hash:', window.location.hash);
+                console.log('🔍 URL search:', window.location.search);
+                
+                // Try both hash and search parameters
+                let params;
+                if (window.location.hash) {
+                    params = new URLSearchParams(window.location.hash.substring(1));
+                    console.log('🔍 Using hash parameters');
+                } else if (window.location.search) {
+                    params = new URLSearchParams(window.location.search);
+                    console.log('🔍 Using search parameters');
+                } else {
+                    console.log('⚠️ No URL parameters found');
+                    params = new URLSearchParams();
+                }
+                
+                chatId = params.get('chat_id');
+                messageId = params.get('message_id'); 
+                userId = params.get('user_id');
                 
                 console.log('🔍 URL params extracted:');
+                console.log('  - chat_id:', chatId);
+                console.log('  - message_id:', messageId);
+                console.log('  - user_id:', userId);
+                
+                // Also check for alternative parameter names that Telegram might use
+                if (!chatId) chatId = params.get('chat');
+                if (!messageId) messageId = params.get('message');
+                if (!userId) userId = params.get('user');
+                
+                console.log('🔍 After checking alternatives:');
                 console.log('  - chat_id:', chatId);
                 console.log('  - message_id:', messageId);
                 console.log('  - user_id:', userId);
@@ -160,21 +186,68 @@ export const useTelegramGame = () => {
                     return true;
                 } else {
                     console.error(`❌ ${callId}: Bot webhook failed:`, response.status, response.statusText);
-                    return false;
                 }
             } else {
-                // Fallback: try TelegramGameProxy.postScore if available
-                console.log(`🔄 ${callId}: Missing context data, trying TelegramGameProxy fallback`);
-                
-                if (window.TelegramGameProxy && typeof window.TelegramGameProxy.postScore === 'function') {
-                    console.log(`📤 ${callId}: Using TelegramGameProxy.postScore(${finalScore})`);
+                console.log(`⚠️ ${callId}: Missing context data (chatId: ${chatId}, messageId: ${messageId}, userId: ${userId})`);
+            }
+            
+            // FALLBACK 1: Try TelegramGameProxy.postScore if available
+            console.log(`🔄 ${callId}: Trying TelegramGameProxy.postScore fallback`);
+            
+            if (window.TelegramGameProxy && typeof window.TelegramGameProxy.postScore === 'function') {
+                console.log(`📤 ${callId}: Using TelegramGameProxy.postScore(${finalScore})`);
+                try {
                     window.TelegramGameProxy.postScore(finalScore);
+                    console.log(`✅ ${callId}: TelegramGameProxy.postScore called successfully`);
+                    return true;
+                } catch (e) {
+                    console.error(`❌ ${callId}: TelegramGameProxy.postScore failed:`, e);
+                }
+            } else {
+                console.log(`❌ ${callId}: TelegramGameProxy.postScore not available`);
+            }
+            
+            // FALLBACK 2: Try direct webhook with dummy data (last resort)
+            console.log(`🔄 ${callId}: Trying webhook with dummy context (last resort)`);
+            try {
+                const webhookUrl = 'https://bossburgerbuild.netlify.app/.netlify/functions/telegram-bot';
+                
+                // Create a minimal update that might still work
+                const fallbackUpdate = {
+                    update_id: Date.now(),
+                    callback_query: {
+                        id: callId,
+                        from: {
+                            id: 12345, // Dummy user ID
+                            first_name: 'GamePlayer'
+                        },
+                        data: `game_score:${finalScore}`,
+                        game_short_name: 'buildergame'
+                    }
+                };
+                
+                console.log(`📤 ${callId}: Sending fallback webhook call`);
+                
+                const response = await fetch(webhookUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(fallbackUpdate)
+                });
+                
+                if (response.ok) {
+                    console.log(`✅ ${callId}: Fallback webhook succeeded`);
                     return true;
                 } else {
-                    console.error(`❌ ${callId}: No valid method available for score submission`);
-                    return false;
+                    console.error(`❌ ${callId}: Fallback webhook failed:`, response.status);
                 }
+            } catch (fallbackError) {
+                console.error(`❌ ${callId}: Fallback webhook error:`, fallbackError);
             }
+            
+            console.error(`❌ ${callId}: All score submission methods failed`);
+            return false;
 
         } catch (error) {
             console.error('❌ Failed to report score:', error);
