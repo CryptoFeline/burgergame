@@ -116,6 +116,22 @@ Ready to become the ultimate Burger Boss? 🏆`;
           data: callbackQuery.data
         });
 
+        // 🔍 ENHANCED LOGGING: Log ALL callback queries to catch TelegramGameProxy.postScore()
+        console.log('🔍 FULL CALLBACK QUERY DEBUG:', {
+          id: callbackQuery.id,
+          from: callbackQuery.from,
+          message: callbackQuery.message ? {
+            message_id: callbackQuery.message.message_id,
+            chat_id: callbackQuery.message.chat?.id,
+            text: callbackQuery.message.text?.substring(0, 100),
+            game: callbackQuery.message.game ? 'present' : 'missing'
+          } : 'no message',
+          game_short_name: callbackQuery.game_short_name,
+          data: callbackQuery.data,
+          raw_data_type: typeof callbackQuery.data,
+          raw_data_length: callbackQuery.data ? callbackQuery.data.length : 0
+        });
+
         // Handle game launch callback (when user clicks "Play" button)
         if (callbackQuery.game_short_name) {
           console.log(`🎮 Game launch: ${callbackQuery.game_short_name} by user ${ctx.from.id}`);
@@ -205,6 +221,37 @@ Ready to become the ultimate Burger Boss? 🏆`;
             });
           }
           return;
+        }
+
+        // 🔍 CATCH-ALL: Check if this might be a TelegramGameProxy.postScore() callback in unknown format
+        if (callbackQuery.data && 
+            !callbackQuery.data.startsWith('show_leaderboard') && 
+            !callbackQuery.data.startsWith('test_score')) {
+          console.log('🤔 UNKNOWN CALLBACK DATA - might be from TelegramGameProxy.postScore():');
+          console.log('📊 Raw data:', callbackQuery.data);
+          console.log('📊 Data type:', typeof callbackQuery.data);
+          console.log('📊 Data length:', callbackQuery.data.length);
+          console.log('📊 First 200 chars:', callbackQuery.data.substring(0, 200));
+          
+          // Try to extract any numbers that might be scores
+          const numberMatches = callbackQuery.data.match(/\d+/g);
+          if (numberMatches && numberMatches.length > 0) {
+            console.log('🔢 Numbers found in callback data:', numberMatches);
+            
+            // If we find numbers, try to use the largest one as potential score
+            const potentialScore = Math.max(...numberMatches.map(n => parseInt(n)));
+            if (potentialScore > 0 && potentialScore < 100000) { // reasonable score range
+              console.log(`🎯 ATTEMPTING to treat ${potentialScore} as score from unknown callback format`);
+              
+              await ctx.answerCallbackQuery({
+                text: "📊 Processing your score...",
+                show_alert: false
+              });
+              
+              await writeGameScore(ctx, potentialScore, callbackQuery);
+              return;
+            }
+          }
         }
 
         // Handle leaderboard button

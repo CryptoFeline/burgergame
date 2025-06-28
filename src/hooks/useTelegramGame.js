@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 
 /**
  * Hook for Telegram Games API integration
- * Clean implementation with server-side score submission
+ * Focused only on testing TelegramGameProxy.postScore()
  */
 export const useTelegramGame = () => {
     const [isTelegramEnvironment, setIsTelegramEnvironment] = useState(false);
@@ -66,8 +66,7 @@ export const useTelegramGame = () => {
 
     /**
      * Report score to Telegram leaderboard
-     * Uses multiple fallback methods for maximum reliability
-     * @param {number} score - Player's final score
+     * SIMPLIFIED VERSION - only tests TelegramGameProxy.postScore()
      */
     const reportScore = useCallback(async (score) => {
         if (!isTelegramEnvironment) {
@@ -88,136 +87,53 @@ export const useTelegramGame = () => {
             console.log(`🎮 GAME OVER - Player achieved score: ${finalScore}`);
             
             const callId = 'game_score_' + Date.now();
-            console.log(`🎯 ${callId}: Starting score submission process`);
+            console.log(`🎯 ${callId}: TESTING TelegramGameProxy.postScore() ONLY`);
             
-            // Method 1: Try TelegramGameProxy.postScore (standard for Telegram Games)
-            if (window.TelegramGameProxy) {
-                console.log(`📤 ${callId}: TelegramGameProxy available, attempting score submission`);
-                console.log(`🔍 ${callId}: Available methods:`, Object.keys(window.TelegramGameProxy));
+            // Check if TelegramGameProxy is available
+            console.log('🔍 TelegramGameProxy availability:', {
+                exists: !!window.TelegramGameProxy,
+                postScore: typeof window.TelegramGameProxy?.postScore,
+                methods: window.TelegramGameProxy ? Object.getOwnPropertyNames(window.TelegramGameProxy) : 'not available'
+            });
+            
+            // Try TelegramGameProxy.postScore (the official method)
+            if (window.TelegramGameProxy && typeof window.TelegramGameProxy.postScore === 'function') {
+                console.log(`📤 ${callId}: Calling TelegramGameProxy.postScore(${finalScore})`);
+                console.log(`📤 ${callId}: Current URL:`, window.location.href);
+                console.log(`📤 ${callId}: Window parent:`, window.parent !== window ? 'in iframe' : 'not in iframe');
                 
-                // Try postScore method
-                if (typeof window.TelegramGameProxy.postScore === 'function') {
-                    try {
-                        console.log(`📤 ${callId}: Using TelegramGameProxy.postScore(${finalScore})`);
-                        window.TelegramGameProxy.postScore(finalScore);
-                        console.log(`✅ ${callId}: TelegramGameProxy.postScore called successfully`);
-                        
-                        // Show user feedback
-                        if (window.Telegram?.WebApp?.showAlert) {
-                            window.Telegram.WebApp.showAlert(`🎉 Score ${finalScore} submitted to leaderboard!`);
-                        }
-                        
-                        return true;
-                    } catch (e) {
-                        console.error(`❌ ${callId}: TelegramGameProxy.postScore failed:`, e);
-                    }
-                }
-                
-                // Try other possible methods
-                const possibleMethods = ['shareScore', 'sendScore', 'submitScore', 'gameScore'];
-                for (const method of possibleMethods) {
-                    if (typeof window.TelegramGameProxy[method] === 'function') {
-                        try {
-                            console.log(`📤 ${callId}: Trying TelegramGameProxy.${method}(${finalScore})`);
-                            window.TelegramGameProxy[method](finalScore);
-                            console.log(`✅ ${callId}: TelegramGameProxy.${method} called successfully`);
-                            return true;
-                        } catch (e) {
-                            console.error(`❌ ${callId}: TelegramGameProxy.${method} failed:`, e);
-                        }
-                    }
-                }
-            } else {
-                console.log(`⚠️ ${callId}: TelegramGameProxy not available`);
-            }
-            
-            // Method 2: Simulate callback query like the "Test Score" button
-            console.log(`🎯 ${callId}: Attempting callback query simulation`);
-            
-            // Try to send a callback query with the score data in the same format
-            if (window.Telegram?.WebApp?.sendData) {
                 try {
-                    const callbackData = `game_score:${finalScore}`;
-                    console.log(`� ${callId}: Sending callback data:`, callbackData);
-                    window.Telegram.WebApp.sendData(callbackData);
-                    console.log(`✅ ${callId}: Callback data sent via Telegram WebApp`);
+                    // Call the official method
+                    const result = window.TelegramGameProxy.postScore(finalScore);
+                    console.log(`✅ ${callId}: TelegramGameProxy.postScore called, result:`, result);
                     
                     // Show user feedback
                     if (window.Telegram?.WebApp?.showAlert) {
-                        window.Telegram.WebApp.showAlert(`🎉 Score ${finalScore} submitted to leaderboard!`);
+                        window.Telegram.WebApp.showAlert(`🎉 Score ${finalScore} submitted!`);
                     }
                     
                     return true;
                 } catch (e) {
-                    console.error(`❌ ${callId}: Telegram WebApp sendData failed:`, e);
+                    console.error(`❌ ${callId}: TelegramGameProxy.postScore failed:`, e);
+                    console.error(`❌ ${callId}: Error details:`, {
+                        message: e.message,
+                        stack: e.stack,
+                        name: e.name
+                    });
                 }
+            } else {
+                console.log(`⚠️ ${callId}: TelegramGameProxy.postScore not available`);
+                console.log(`🔍 ${callId}: Available objects:`, {
+                    TelegramGameProxy: !!window.TelegramGameProxy,
+                    Telegram: !!window.Telegram,
+                    TelegramWebApp: !!window.Telegram?.WebApp
+                });
             }
             
-            // Alternative: Try to trigger a callback query manually
-            if (window.parent && window.parent !== window) {
-                try {
-                    // Send the exact same format as the test button
-                    const callbackData = `game_score:${finalScore}`;
-                    console.log(`� ${callId}: Sending callback query simulation:`, callbackData);
-                    
-                    // Try multiple postMessage formats
-                    window.parent.postMessage({
-                        type: 'callback_query',
-                        data: callbackData
-                    }, '*');
-                    
-                    window.parent.postMessage({
-                        type: 'telegram_callback',
-                        callback_data: callbackData
-                    }, '*');
-                    
-                    // Also try direct format
-                    window.parent.postMessage(callbackData, '*');
-                    
-                    console.log(`✅ ${callId}: Callback query simulation sent`);
-                    return true;
-                } catch (e) {
-                    console.error(`❌ ${callId}: Callback query simulation failed:`, e);
-                }
-            }
+            // If we reach here, TelegramGameProxy.postScore didn't work
+            console.log(`⚠️ ${callId}: TelegramGameProxy.postScore failed or unavailable`);
+            console.log(`📊 Final score was: ${finalScore} - not sent to Telegram`);
             
-            // Method 3: Manual callback submission (last resort - no page reload)
-            console.log(`🎯 ${callId}: Attempting manual callback submission`);
-            
-            // Try to trigger the callback manually without page reload
-            if (window.parent && window.parent !== window) {
-                try {
-                    // We're in an iframe, try to send a message to parent
-                    const scoreData = {
-                        type: 'game_score',
-                        score: finalScore,
-                        game_short_name: 'buildergame',
-                        timestamp: Date.now()
-                    };
-                    
-                    console.log(`📤 ${callId}: Sending postMessage to parent:`, scoreData);
-                    window.parent.postMessage(scoreData, '*');
-                    
-                    // Also try the callback query format
-                    const callbackData = `game_score:${finalScore}`;
-                    console.log(`📤 ${callId}: Sending callback data format:`, callbackData);
-                    window.parent.postMessage({ 
-                        type: 'callback_query_data', 
-                        data: callbackData 
-                    }, '*');
-                    
-                    console.log(`✅ ${callId}: Manual callback submitted successfully`);
-                    return true;
-                } catch (e) {
-                    console.error(`❌ ${callId}: Manual callback failed:`, e);
-                }
-            }
-            
-            // If we reach here, all methods failed but we don't want to break the game experience
-            console.log(`⚠️ ${callId}: All score submission methods failed`);
-            console.log(`📊 Final score was: ${finalScore} - saved locally but not sent to Telegram`);
-            
-            // Don't reload the page or break the game - just log and return false
             return false;
 
         } catch (error) {
@@ -228,7 +144,6 @@ export const useTelegramGame = () => {
 
     /**
      * Simple alert function
-     * @param {string} message - Alert message
      */
     const showAlert = useCallback((message) => {
         if (window.Telegram?.WebApp?.showAlert) {
