@@ -137,8 +137,8 @@ Ready to become the ultimate Burger Boss? 🏆`;
             show_alert: false
           });
 
-          // Test direct score submission
-          const testScore = 42;
+          // Test direct score submission with a unique score each time
+          const testScore = Math.floor(Math.random() * 1000) + 100; // Random score 100-1099
           console.log(`🧪 Testing direct setGameScore with score: ${testScore}`);
           await writeGameScore(ctx, testScore, callbackQuery);
           return;
@@ -307,7 +307,18 @@ Ready to become the ultimate Burger Boss? 🏆`;
         // STEP 7: Handle reliability issues
         let errorMessage = '❌ Failed to save score';
         
-        if (error.description?.includes('USER_ID_INVALID')) {
+        if (error.description?.includes('BOT_SCORE_NOT_MODIFIED')) {
+          // This happens when trying to submit the same or lower score
+          console.log('⚠️ Score not modified - probably same or lower score than before');
+          errorMessage = '🎯 Score already recorded! Play again to beat your high score.';
+          
+          // Still show success message since the score exists in leaderboard
+          await ctx.answerCallbackQuery({
+            text: `🎯 Your score ${score} is recorded!`,
+            show_alert: true
+          });
+          return; // Don't treat this as an error
+        } else if (error.description?.includes('USER_ID_INVALID')) {
           errorMessage = '❌ Invalid user data - please restart the game';
         } else if (error.description?.includes('Bad Request')) {
           errorMessage = '❌ Invalid game session - please play again';
