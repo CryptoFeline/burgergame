@@ -284,7 +284,7 @@ export const useTelegramGame = () => {
             console.error('❌ Failed to report score:', error);
             return false;
         }
-    }, [isTelegramEnvironment]);
+    }, [isTelegramEnvironment, isReady]);
 
     /**
      * Simple alert function
