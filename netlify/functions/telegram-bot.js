@@ -292,6 +292,24 @@ Ready to become the ultimate Burger Boss? 🏆`;
         console.log(`✅ SCORE SAVED SUCCESSFULLY to Telegram Games API:`, result);
         console.log(`🏆 Score ${score} for ${userName} is now in the leaderboard!`);
 
+        // Send a service message to the chat for every game completion
+        // This is separate from the automatic high score service messages
+        try {
+          if (callbackQuery.message && callbackQuery.message.chat.type !== 'private') {
+            // Only send service messages in group/supergroup chats, not private chats
+            const chatId = callbackQuery.message.chat.id;
+            const gameOverMessage = `🎮 ${userName} just scored ${score} points in Boss Burger Builder!`;
+            
+            await ctx.api.sendMessage(chatId, gameOverMessage, {
+              reply_to_message_id: callbackQuery.message.message_id
+            });
+            
+            console.log(`📢 Sent game completion service message to chat ${chatId}`);
+          }
+        } catch (serviceError) {
+          console.log('⚠️ Could not send service message (probably private chat):', serviceError.message);
+        }
+
         // Send success feedback
         const message = getScoreMessage(userName, score);
         await ctx.answerCallbackQuery({
@@ -449,6 +467,76 @@ Ready to become the ultimate Burger Boss? 🏆`;
 Built with Telegram's Games API 🚀`;
 
       await ctx.reply(helpText, { parse_mode: 'Markdown' });
+    });
+
+    // Admin command to reset the game message (clears visual leaderboard)
+    bot.command('reset_game', async (ctx) => {
+      try {
+        // Check if user is admin (you can customize this check)
+        const chatMember = await ctx.api.getChatMember(ctx.chat.id, ctx.from.id);
+        if (!['administrator', 'creator'].includes(chatMember.status)) {
+          await ctx.reply('❌ Only admins can reset the game.');
+          return;
+        }
+
+        console.log(`🔄 Admin ${ctx.from.first_name} (${ctx.from.id}) resetting game in chat ${ctx.chat.id}`);
+        
+        // Send a fresh game message
+        await ctx.replyWithGame(GAME_SHORT_NAME, {
+          reply_markup: {
+            inline_keyboard: [
+              [
+                { text: "🍔 Play Boss Burger Builder!", callback_game: {} }
+              ],
+              [
+                { text: "🏆 View Leaderboard", callback_data: `show_leaderboard:${GAME_SHORT_NAME}` },
+                { text: "🧪 Test Score", callback_data: "test_score" }
+              ]
+            ]
+          }
+        });
+        
+        await ctx.reply('✅ Game reset! Fresh leaderboard started.');
+        console.log(`✅ Game message reset successfully`);
+        
+      } catch (error) {
+        console.error('❌ Error resetting game:', error);
+        await ctx.reply('❌ Failed to reset game. Make sure I have admin permissions.');
+      }
+    });
+
+    // Command to toggle test mode (remove test button)
+    bot.command('production_mode', async (ctx) => {
+      try {
+        // Check if user is admin
+        const chatMember = await ctx.api.getChatMember(ctx.chat.id, ctx.from.id);
+        if (!['administrator', 'creator'].includes(chatMember.status)) {
+          await ctx.reply('❌ Only admins can change production mode.');
+          return;
+        }
+
+        console.log(`🔧 Admin ${ctx.from.first_name} enabling production mode (removing test button)`);
+        
+        // Send game without test button
+        await ctx.replyWithGame(GAME_SHORT_NAME, {
+          reply_markup: {
+            inline_keyboard: [
+              [
+                { text: "🍔 Play Boss Burger Builder!", callback_game: {} }
+              ],
+              [
+                { text: "🏆 View Leaderboard", callback_data: `show_leaderboard:${GAME_SHORT_NAME}` }
+              ]
+            ]
+          }
+        });
+        
+        await ctx.reply('✅ Production mode enabled! Test button removed.');
+        
+      } catch (error) {
+        console.error('❌ Error enabling production mode:', error);
+        await ctx.reply('❌ Failed to enable production mode.');
+      }
     });
 
     // Handle POST requests (webhook updates)
