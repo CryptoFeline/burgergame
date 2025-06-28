@@ -91,11 +91,56 @@ export const useTelegramGame = () => {
             console.log(`🎯 ${callId}: Starting score submission process`);
             
             // Method 1: Try TelegramGameProxy.postScore (standard for Telegram Games)
-            if (window.TelegramGameProxy && typeof window.TelegramGameProxy.postScore === 'function') {
-                console.log(`📤 ${callId}: Attempting TelegramGameProxy.postScore(${finalScore})`);
+            if (window.TelegramGameProxy) {
+                console.log(`📤 ${callId}: TelegramGameProxy available, attempting score submission`);
+                console.log(`🔍 ${callId}: Available methods:`, Object.keys(window.TelegramGameProxy));
+                
+                // Try postScore method
+                if (typeof window.TelegramGameProxy.postScore === 'function') {
+                    try {
+                        console.log(`📤 ${callId}: Using TelegramGameProxy.postScore(${finalScore})`);
+                        window.TelegramGameProxy.postScore(finalScore);
+                        console.log(`✅ ${callId}: TelegramGameProxy.postScore called successfully`);
+                        
+                        // Show user feedback
+                        if (window.Telegram?.WebApp?.showAlert) {
+                            window.Telegram.WebApp.showAlert(`🎉 Score ${finalScore} submitted to leaderboard!`);
+                        }
+                        
+                        return true;
+                    } catch (e) {
+                        console.error(`❌ ${callId}: TelegramGameProxy.postScore failed:`, e);
+                    }
+                }
+                
+                // Try other possible methods
+                const possibleMethods = ['shareScore', 'sendScore', 'submitScore', 'gameScore'];
+                for (const method of possibleMethods) {
+                    if (typeof window.TelegramGameProxy[method] === 'function') {
+                        try {
+                            console.log(`📤 ${callId}: Trying TelegramGameProxy.${method}(${finalScore})`);
+                            window.TelegramGameProxy[method](finalScore);
+                            console.log(`✅ ${callId}: TelegramGameProxy.${method} called successfully`);
+                            return true;
+                        } catch (e) {
+                            console.error(`❌ ${callId}: TelegramGameProxy.${method} failed:`, e);
+                        }
+                    }
+                }
+            } else {
+                console.log(`⚠️ ${callId}: TelegramGameProxy not available`);
+            }
+            
+            // Method 2: Simulate callback query like the "Test Score" button
+            console.log(`🎯 ${callId}: Attempting callback query simulation`);
+            
+            // Try to send a callback query with the score data in the same format
+            if (window.Telegram?.WebApp?.sendData) {
                 try {
-                    window.TelegramGameProxy.postScore(finalScore);
-                    console.log(`✅ ${callId}: TelegramGameProxy.postScore called successfully`);
+                    const callbackData = `game_score:${finalScore}`;
+                    console.log(`� ${callId}: Sending callback data:`, callbackData);
+                    window.Telegram.WebApp.sendData(callbackData);
+                    console.log(`✅ ${callId}: Callback data sent via Telegram WebApp`);
                     
                     // Show user feedback
                     if (window.Telegram?.WebApp?.showAlert) {
@@ -104,97 +149,36 @@ export const useTelegramGame = () => {
                     
                     return true;
                 } catch (e) {
-                    console.error(`❌ ${callId}: TelegramGameProxy.postScore failed:`, e);
+                    console.error(`❌ ${callId}: Telegram WebApp sendData failed:`, e);
                 }
-            } else {
-                console.log(`⚠️ ${callId}: TelegramGameProxy.postScore not available`);
             }
             
-            // Method 2: Server-side score submission with Telegram context
-            console.log(`🔧 ${callId}: Attempting server-side score submission`);
-            
-            // Extract Telegram context from the current environment
-            let telegramContext = null;
-            
-            // Try to get context from URL parameters (most reliable for Telegram Games)
-            try {
-                const hashParams = new URLSearchParams(window.location.hash.substring(1));
-                const searchParams = new URLSearchParams(window.location.search);
-                
-                telegramContext = {
-                    user_id: hashParams.get('user_id') || searchParams.get('user_id'),
-                    chat_id: hashParams.get('chat_id') || searchParams.get('chat_id'),
-                    message_id: hashParams.get('message_id') || searchParams.get('message_id')
-                };
-                
-                console.log(`📋 ${callId}: Extracted Telegram context from URL:`, telegramContext);
-            } catch (e) {
-                console.log(`⚠️ ${callId}: Failed to extract from URL:`, e);
-            }
-            
-            // Try to get context from Telegram WebApp if available
-            if ((!telegramContext?.user_id || !telegramContext?.chat_id) && window.Telegram?.WebApp) {
+            // Alternative: Try to trigger a callback query manually
+            if (window.parent && window.parent !== window) {
                 try {
-                    const tg = window.Telegram.WebApp;
-                    const initData = tg.initDataUnsafe;
+                    // Send the exact same format as the test button
+                    const callbackData = `game_score:${finalScore}`;
+                    console.log(`� ${callId}: Sending callback query simulation:`, callbackData);
                     
-                    if (initData) {
-                        telegramContext = {
-                            user_id: initData.user?.id?.toString() || telegramContext?.user_id,
-                            chat_id: initData.chat?.id?.toString() || telegramContext?.chat_id,
-                            message_id: telegramContext?.message_id // Usually not available in WebApp
-                        };
-                        console.log(`📱 ${callId}: Enhanced context from Telegram WebApp:`, telegramContext);
-                    }
+                    // Try multiple postMessage formats
+                    window.parent.postMessage({
+                        type: 'callback_query',
+                        data: callbackData
+                    }, '*');
+                    
+                    window.parent.postMessage({
+                        type: 'telegram_callback',
+                        callback_data: callbackData
+                    }, '*');
+                    
+                    // Also try direct format
+                    window.parent.postMessage(callbackData, '*');
+                    
+                    console.log(`✅ ${callId}: Callback query simulation sent`);
+                    return true;
                 } catch (e) {
-                    console.log(`⚠️ ${callId}: Failed to extract from WebApp:`, e);
+                    console.error(`❌ ${callId}: Callback query simulation failed:`, e);
                 }
-            }
-            
-            // If we have sufficient Telegram context, try server-side submission
-            if (telegramContext?.user_id && telegramContext?.chat_id && telegramContext?.message_id) {
-                console.log(`📤 ${callId}: Submitting score via dedicated endpoint`);
-                
-                const scoreEndpoint = 'https://bossburgerbuild.netlify.app/.netlify/functions/game-score';
-                const payload = {
-                    score: finalScore,
-                    user_id: telegramContext.user_id,
-                    chat_id: telegramContext.chat_id,
-                    message_id: telegramContext.message_id,
-                    game_short_name: 'buildergame'
-                };
-                
-                console.log(`📊 ${callId}: Payload:`, payload);
-                
-                try {
-                    const response = await fetch(scoreEndpoint, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(payload)
-                    });
-                    
-                    const result = await response.json();
-                    console.log(`📨 ${callId}: Server response:`, { status: response.status, result });
-                    
-                    if (response.ok && result.success) {
-                        console.log(`✅ ${callId}: Score successfully submitted via server!`);
-                        
-                        // Show user feedback
-                        if (window.Telegram?.WebApp?.showAlert) {
-                            window.Telegram.WebApp.showAlert(`🎉 Score ${finalScore} submitted to leaderboard!`);
-                        }
-                        
-                        return true;
-                    } else {
-                        console.error(`❌ ${callId}: Server-side submission failed:`, result);
-                    }
-                } catch (fetchError) {
-                    console.error(`❌ ${callId}: Network error during server submission:`, fetchError);
-                }
-            } else {
-                console.log(`⚠️ ${callId}: Insufficient Telegram context for server submission:`, telegramContext);
             }
             
             // Method 3: Manual callback submission (last resort - no page reload)
