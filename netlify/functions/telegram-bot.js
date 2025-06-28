@@ -136,6 +136,23 @@ Ready to become the ultimate Burger Boss? 🏆`;
         if (callbackQuery.game_short_name) {
           console.log(`🎮 Game launch: ${callbackQuery.game_short_name} by user ${ctx.from.id}`);
           
+          // Question 4: Log chat type and context
+          console.log('🔍 === ANSWERING QUESTION 4: Chat Context Analysis ===');
+          console.log('📍 Chat details:', {
+            chat_type: callbackQuery.message?.chat?.type,
+            chat_id: callbackQuery.message?.chat?.id,
+            chat_title: callbackQuery.message?.chat?.title,
+            is_private: callbackQuery.message?.chat?.type === 'private',
+            is_group: callbackQuery.message?.chat?.type === 'group',
+            is_supergroup: callbackQuery.message?.chat?.type === 'supergroup',
+            is_channel: callbackQuery.message?.chat?.type === 'channel',
+            message_id: callbackQuery.message?.message_id,
+            user_id: ctx.from.id,
+            user_name: ctx.from.first_name,
+            username: ctx.from.username
+          });
+          console.log('🔍 === END QUESTION 4 ANALYSIS ===');
+          
           // STEP 4: Acknowledge callback immediately (≤ 10s)
           await ctx.answerCallbackQuery({
             url: "https://bossburgerbuild.netlify.app?v=" + Date.now()
