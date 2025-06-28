@@ -162,6 +162,35 @@ export const useTelegramGame = () => {
             const callId = 'game_score_' + Date.now();
             console.log(`🎯 ${callId}: TESTING TelegramGameProxy.postScore() ONLY`);
             
+            // FIRST: Send debug info to help track if the game is working
+            try {
+                const debugData = {
+                    score: finalScore,
+                    timestamp: new Date().toISOString(),
+                    user_agent: navigator.userAgent,
+                    location: window.location.href,
+                    telegram_available: {
+                        TelegramGameProxy: !!window.TelegramGameProxy,
+                        Telegram: !!window.Telegram,
+                        WebApp: !!window.Telegram?.WebApp
+                    },
+                    environment: {
+                        in_iframe: window.parent !== window,
+                        referrer: document.referrer,
+                        host: window.location.host
+                    }
+                };
+                
+                await fetch('/.netlify/functions/debug-game', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(debugData)
+                });
+                console.log(`🔍 ${callId}: Debug data sent to server`);
+            } catch (debugError) {
+                console.log(`⚠️ ${callId}: Debug endpoint failed:`, debugError.message);
+            }
+            
             // Check if TelegramGameProxy is available
             console.log('🔍 TelegramGameProxy availability:', {
                 exists: !!window.TelegramGameProxy,

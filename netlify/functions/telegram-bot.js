@@ -173,7 +173,9 @@ Ready to become the ultimate Burger Boss? 🏆`;
           // Test direct score submission with a unique score each time
           const testScore = Math.floor(Math.random() * 1000) + 100; // Random score 100-1099
           console.log(`🧪 Testing direct setGameScore with score: ${testScore}`);
-          await writeGameScore(ctx, testScore, callbackQuery);
+          
+          // Use a modified version that respects high scores (don't force overwrite)
+          await writeGameScore(ctx, testScore, callbackQuery, false); // false = don't force
           return;
         }
 
@@ -314,7 +316,7 @@ Ready to become the ultimate Burger Boss? 🏆`;
     // STEP 5: Write the score to Telegram's table
     // =============================================================================
     
-    async function writeGameScore(ctx, score, callbackQuery) {
+    async function writeGameScore(ctx, score, callbackQuery, force = true) {
       try {
         const userId = ctx.from.id;
         const userName = ctx.from.first_name;
@@ -322,6 +324,7 @@ Ready to become the ultimate Burger Boss? 🏆`;
         console.log(`� GAME OVER - Writing final score to Telegram Games API`);
         console.log(`👤 Player: ${userName} (${userId})`);
         console.log(`📊 Final Score: ${score}`);
+        console.log(`⚡ Force overwrite: ${force}`);
 
         // STEP 5: Call setGameScore with correct Grammy.js parameters
         // Grammy.js expects: setGameScore(chat_id, message_id, user_id, score, options)
@@ -337,7 +340,7 @@ Ready to become the ultimate Burger Boss? 🏆`;
             messageId,  // message_id
             userId,     // user_id
             score,      // score
-            { force: true } // options
+            { force: force } // options - only force if explicitly requested
           );
         } else if (callbackQuery.inline_message_id) {
           console.log(`📍 Saving to inline message - ID: ${callbackQuery.inline_message_id}`);
@@ -347,7 +350,7 @@ Ready to become the ultimate Burger Boss? 🏆`;
             callbackQuery.inline_message_id, // inline_message_id
             userId,     // user_id
             score,      // score
-            { force: true } // options
+            { force: force } // options - only force if explicitly requested
           );
         } else {
           throw new Error('No valid message identifiers found for score scoping');
