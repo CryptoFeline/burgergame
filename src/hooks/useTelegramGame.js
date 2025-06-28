@@ -96,6 +96,12 @@ export const useTelegramGame = () => {
                 try {
                     window.TelegramGameProxy.postScore(finalScore);
                     console.log(`✅ ${callId}: TelegramGameProxy.postScore called successfully`);
+                    
+                    // Show user feedback
+                    if (window.Telegram?.WebApp?.showAlert) {
+                        window.Telegram.WebApp.showAlert(`🎉 Score ${finalScore} submitted to leaderboard!`);
+                    }
+                    
                     return true;
                 } catch (e) {
                     console.error(`❌ ${callId}: TelegramGameProxy.postScore failed:`, e);
@@ -174,6 +180,12 @@ export const useTelegramGame = () => {
                     
                     if (response.ok && result.success) {
                         console.log(`✅ ${callId}: Score successfully submitted via server!`);
+                        
+                        // Show user feedback
+                        if (window.Telegram?.WebApp?.showAlert) {
+                            window.Telegram.WebApp.showAlert(`🎉 Score ${finalScore} submitted to leaderboard!`);
+                        }
+                        
                         return true;
                     } else {
                         console.error(`❌ ${callId}: Server-side submission failed:`, result);
@@ -185,25 +197,44 @@ export const useTelegramGame = () => {
                 console.log(`⚠️ ${callId}: Insufficient Telegram context for server submission:`, telegramContext);
             }
             
-            // Method 3: Fallback - redirect to score handler (last resort)
-            console.log(`🔄 ${callId}: Using score handler redirect method`);
+            // Method 3: Manual callback submission (last resort - no page reload)
+            console.log(`🎯 ${callId}: Attempting manual callback submission`);
             
-            const scoreHandlerUrl = new URL('/score-handler.html', window.location.origin);
-            scoreHandlerUrl.searchParams.set('final_score', finalScore);
-            scoreHandlerUrl.searchParams.set('game_over', 'true');
-            scoreHandlerUrl.searchParams.set('timestamp', Date.now());
-            
-            console.log(`📤 ${callId}: Redirecting to score handler:`, scoreHandlerUrl.href);
-            
-            // Prevent infinite redirects
-            if (!sessionStorage.getItem('scoreSubmitted')) {
-                sessionStorage.setItem('scoreSubmitted', 'true');
-                window.location.href = scoreHandlerUrl.href;
-            } else {
-                console.log(`⚠️ ${callId}: Score already submitted, skipping redirect`);
+            // Try to trigger the callback manually without page reload
+            if (window.parent && window.parent !== window) {
+                try {
+                    // We're in an iframe, try to send a message to parent
+                    const scoreData = {
+                        type: 'game_score',
+                        score: finalScore,
+                        game_short_name: 'buildergame',
+                        timestamp: Date.now()
+                    };
+                    
+                    console.log(`📤 ${callId}: Sending postMessage to parent:`, scoreData);
+                    window.parent.postMessage(scoreData, '*');
+                    
+                    // Also try the callback query format
+                    const callbackData = `game_score:${finalScore}`;
+                    console.log(`📤 ${callId}: Sending callback data format:`, callbackData);
+                    window.parent.postMessage({ 
+                        type: 'callback_query_data', 
+                        data: callbackData 
+                    }, '*');
+                    
+                    console.log(`✅ ${callId}: Manual callback submitted successfully`);
+                    return true;
+                } catch (e) {
+                    console.error(`❌ ${callId}: Manual callback failed:`, e);
+                }
             }
             
-            return true;
+            // If we reach here, all methods failed but we don't want to break the game experience
+            console.log(`⚠️ ${callId}: All score submission methods failed`);
+            console.log(`📊 Final score was: ${finalScore} - saved locally but not sent to Telegram`);
+            
+            // Don't reload the page or break the game - just log and return false
+            return false;
 
         } catch (error) {
             console.error('❌ Failed to report score:', error);
