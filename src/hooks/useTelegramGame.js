@@ -86,9 +86,14 @@ export const useTelegramGame = () => {
             
             // Check for Telegram Game Proxy (primary method for Games)
             if (window.TelegramGameProxy) {
-                console.log('✅ Telegram Game Proxy detected');
+                console.log('✅ Telegram Game Proxy detected - setting isTelegramEnvironment = true');
                 setIsTelegramEnvironment(true);
                 setIsReady(true);
+                console.log('🔍 Environment state after TelegramGameProxy detection:', {
+                    TelegramGameProxy: !!window.TelegramGameProxy,
+                    settingTelegramEnv: true,
+                    settingReady: true
+                });
                 return;
             }
 
@@ -142,9 +147,32 @@ export const useTelegramGame = () => {
      * SIMPLIFIED VERSION - only tests TelegramGameProxy.postScore()
      */
     const reportScore = useCallback(async (score) => {
-        if (!isTelegramEnvironment) {
+        console.log('🎯 reportScore called with:', {
+            score,
+            isTelegramEnvironment,
+            isReady,
+            TelegramGameProxy: !!window.TelegramGameProxy
+        });
+        
+        // Emergency override: if TelegramGameProxy is available now, proceed regardless of initial detection
+        const runtimeTelegramCheck = !!window.TelegramGameProxy;
+        
+        if (!isTelegramEnvironment && !runtimeTelegramCheck) {
             console.log('⚠️ Not in Telegram environment, skipping score submission');
+            console.log('⚠️ Environment check failed - debugging state:', {
+                isTelegramEnvironment,
+                isReady,
+                TelegramGameProxy_available: !!window.TelegramGameProxy,
+                Telegram_available: !!window.Telegram,
+                WebApp_available: !!window.Telegram?.WebApp,
+                current_url: window.location.href,
+                in_iframe: window.parent !== window
+            });
             return false;
+        }
+        
+        if (runtimeTelegramCheck && !isTelegramEnvironment) {
+            console.log('🔧 RUNTIME OVERRIDE: TelegramGameProxy available now, proceeding despite initial detection failure');
         }
 
         // Development mode handling
