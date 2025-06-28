@@ -188,16 +188,16 @@ export const useTelegramGame = () => {
             console.log(`🎮 GAME OVER - Player achieved score: ${finalScore}`);
             
             const callId = 'game_score_' + Date.now();
-            console.log(`🎯 ${callId}: TESTING TelegramGameProxy.postScore() ONLY`);
+            console.log(`🎯 ${callId}: Attempting score submission via session bridge`);
             
-            // FIRST: Try the new session-based score submission
+            // Submit score using session-based approach
             try {
                 // Get session ID from URL parameters
                 const urlParams = new URLSearchParams(window.location.search);
                 const sessionId = urlParams.get('sessionId');
                 
                 if (sessionId) {
-                    console.log(`🎯 ${callId}: Found session ID, attempting session-based score submission`);
+                    console.log(`🎯 ${callId}: Found session ID: ${sessionId}`);
                     
                     const sessionResponse = await fetch('/.netlify/functions/game-session', {
                         method: 'POST',
@@ -211,129 +211,25 @@ export const useTelegramGame = () => {
                     
                     if (sessionResponse.ok) {
                         const result = await sessionResponse.json();
-                        console.log(`✅ ${callId}: Session-based score submission successful!`, result);
+                        console.log(`✅ ${callId}: Score submission successful!`, result);
                         
                         if (window.Telegram?.WebApp?.showAlert) {
-                            window.Telegram.WebApp.showAlert(`🎉 Score ${finalScore} submitted!`);
+                            window.Telegram.WebApp.showAlert(`🎉 Score ${finalScore} submitted to leaderboard!`);
                         }
                         return true;
                     } else {
-                        console.log(`⚠️ ${callId}: Session-based submission failed, trying fallback`);
+                        const errorResult = await sessionResponse.json();
+                        console.log(`❌ ${callId}: Score submission failed:`, errorResult);
+                        return false;
                     }
                 } else {
-                    console.log(`⚠️ ${callId}: No session ID found in URL`);
+                    console.log(`⚠️ ${callId}: No session ID found in URL - game may not have been launched from Telegram bot`);
+                    return false;
                 }
             } catch (sessionError) {
-                console.log(`⚠️ ${callId}: Session-based submission error:`, sessionError.message);
+                console.log(`❌ ${callId}: Session-based submission error:`, sessionError.message);
+                return false;
             }
-            
-            // FALLBACK: Send debug info to help track if the game is working
-            try {
-                const debugData = {
-                    score: finalScore,
-                    timestamp: new Date().toISOString(),
-                    user_agent: navigator.userAgent,
-                    location: window.location.href,
-                    telegram_available: {
-                        TelegramGameProxy: !!window.TelegramGameProxy,
-                        Telegram: !!window.Telegram,
-                        WebApp: !!window.Telegram?.WebApp
-                    },
-                    environment: {
-                        in_iframe: window.parent !== window,
-                        referrer: document.referrer,
-                        host: window.location.host
-                    },
-                    // Extract URL parameters that might contain Telegram context
-                    url_params: {
-                        search: window.location.search,
-                        hash: window.location.hash,
-                        full_url: window.location.href
-                    }
-                };
-                
-                const response = await fetch('/.netlify/functions/debug-game', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(debugData)
-                });
-                
-                const result = await response.json();
-                console.log(`🔍 ${callId}: Debug data sent to server, response:`, result);
-                
-                // Check if the server successfully bridged the score
-                if (result.success && result.note && result.note.includes('bridged')) {
-                    console.log(`✅ ${callId}: Score successfully bridged to bot via debug endpoint!`);
-                    if (window.Telegram?.WebApp?.showAlert) {
-                        window.Telegram.WebApp.showAlert(`🎉 Score ${finalScore} submitted!`);
-                    }
-                    return true;
-                }
-                
-            } catch (debugError) {
-                console.log(`⚠️ ${callId}: Debug endpoint failed:`, debugError.message);
-            }
-            
-            // Check if TelegramGameProxy is available
-            console.log('🔍 TelegramGameProxy availability:', {
-                exists: !!window.TelegramGameProxy,
-                postScore: typeof window.TelegramGameProxy?.postScore,
-                methods: window.TelegramGameProxy ? Object.getOwnPropertyNames(window.TelegramGameProxy) : 'not available'
-            });
-            
-            // Try TelegramGameProxy.postScore (the official method)
-            if (window.TelegramGameProxy && typeof window.TelegramGameProxy.postScore === 'function') {
-                console.log(`📤 ${callId}: === TESTING QUESTION 1: TelegramGameProxy.postScore() ===`);
-                console.log(`📤 ${callId}: Calling TelegramGameProxy.postScore(${finalScore})`);
-                console.log(`📤 ${callId}: Current URL:`, window.location.href);
-                console.log(`📤 ${callId}: Window parent:`, window.parent !== window ? 'in iframe' : 'not in iframe');
-                
-                try {
-                    // Call the official method (Question 1 - using exactly as documented)
-                    const result = window.TelegramGameProxy.postScore(finalScore);
-                    console.log(`✅ ${callId}: TelegramGameProxy.postScore called, result:`, result);
-                    
-                    // Show user feedback
-                    if (window.Telegram?.WebApp?.showAlert) {
-                        window.Telegram.WebApp.showAlert(`🎉 Score ${finalScore} submitted!`);
-                    }
-                    
-                    return true;
-                } catch (e) {
-                    console.error(`❌ ${callId}: TelegramGameProxy.postScore failed:`, e);
-                    console.error(`❌ ${callId}: Error details:`, {
-                        message: e.message,
-                        stack: e.stack,
-                        name: e.name
-                    });
-                }
-                
-                // Question 1: Try alternative method - postEvent
-                if (typeof window.TelegramGameProxy.postEvent === 'function') {
-                    console.log(`📤 ${callId}: === TESTING QUESTION 1: TelegramGameProxy.postEvent() ===`);
-                    try {
-                        console.log(`📤 ${callId}: Trying postEvent('web_app_send_data', {score: ${finalScore}})`);
-                        const eventResult = window.TelegramGameProxy.postEvent('web_app_send_data', {score: finalScore});
-                        console.log(`✅ ${callId}: TelegramGameProxy.postEvent called, result:`, eventResult);
-                        return true;
-                    } catch (eventError) {
-                        console.error(`❌ ${callId}: TelegramGameProxy.postEvent failed:`, eventError);
-                    }
-                }
-            } else {
-                console.log(`⚠️ ${callId}: TelegramGameProxy.postScore not available`);
-                console.log(`🔍 ${callId}: Available objects:`, {
-                    TelegramGameProxy: !!window.TelegramGameProxy,
-                    Telegram: !!window.Telegram,
-                    TelegramWebApp: !!window.Telegram?.WebApp
-                });
-            }
-            
-            // If we reach here, TelegramGameProxy.postScore didn't work
-            console.log(`⚠️ ${callId}: TelegramGameProxy.postScore failed or unavailable`);
-            console.log(`📊 Final score was: ${finalScore} - not sent to Telegram`);
-            
-            return false;
 
         } catch (error) {
             console.error('❌ Failed to report score:', error);

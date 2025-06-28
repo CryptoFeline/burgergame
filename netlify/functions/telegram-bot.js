@@ -62,8 +62,7 @@ Ready to become the ultimate Burger Boss? 🏆`;
                 { text: "🍔 Play Boss Burger Builder!", callback_game: {} }
               ],
               [
-                { text: "🏆 View Leaderboard", callback_data: `show_leaderboard:${GAME_SHORT_NAME}` },
-                { text: "🧪 Test Score", callback_data: "test_score" }
+                { text: "🏆 View Leaderboard", callback_data: `show_leaderboard:${GAME_SHORT_NAME}` }
               ]
             ]
           }
@@ -88,8 +87,7 @@ Ready to become the ultimate Burger Boss? 🏆`;
                 { text: "🍔 Play Boss Burger Builder!", callback_game: {} }
               ],
               [
-                { text: "🏆 View Leaderboard", callback_data: `show_leaderboard:${GAME_SHORT_NAME}` },
-                { text: "🧪 Test Score", callback_data: "test_score" }
+                { text: "🏆 View Leaderboard", callback_data: `show_leaderboard:${GAME_SHORT_NAME}` }
               ]
             ]
           }
@@ -199,25 +197,6 @@ Ready to become the ultimate Burger Boss? 🏆`;
           return;
         }
 
-        // Handle test score button (for debugging) - CHECK THIS FIRST
-        if (callbackQuery.data === 'test_score') {
-          console.log('🧪 Test score button clicked');
-          
-          // STEP 4: Acknowledge callback immediately
-          await ctx.answerCallbackQuery({
-            text: "🧪 Testing score submission...",
-            show_alert: false
-          });
-
-          // Test direct score submission with a unique score each time
-          const testScore = Math.floor(Math.random() * 1000) + 100; // Random score 100-1099
-          console.log(`🧪 Testing direct setGameScore with score: ${testScore}`);
-          
-          // Use a modified version that respects high scores (don't force overwrite)
-          await writeGameScore(ctx, testScore, callbackQuery, false); // false = don't force
-          return;
-        }
-
         // Handle score submission from the game
         // This arrives as a callback_query after the game sends score data
         // Check for various score formats: JSON, simple format, or string match
@@ -283,8 +262,7 @@ Ready to become the ultimate Burger Boss? 🏆`;
 
         // 🔍 CATCH-ALL: Check if this might be a TelegramGameProxy.postScore() callback in unknown format
         if (callbackQuery.data && 
-            !callbackQuery.data.startsWith('show_leaderboard') && 
-            !callbackQuery.data.startsWith('test_score')) {
+            !callbackQuery.data.startsWith('show_leaderboard')) {
           console.log('🤔 UNKNOWN CALLBACK DATA - might be from TelegramGameProxy.postScore():');
           console.log('📊 Raw data:', callbackQuery.data);
           console.log('📊 Data type:', typeof callbackQuery.data);
