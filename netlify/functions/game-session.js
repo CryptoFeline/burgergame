@@ -113,18 +113,8 @@ exports.handler = async (event, context) => {
           // Clean up session after successful submission
           sessions.delete(body.sessionId);
           
-          // Send service message to chat
-          try {
-            if (sessionData.chatId !== sessionData.userId) { // Only in group chats
-              await bot.api.sendMessage(sessionData.chatId, 
-                `🎮 Player just scored ${body.score} points in Boss Burger Builder!`, {
-                reply_to_message_id: parseInt(sessionData.messageId)
-              });
-              console.log('📢 Service message sent to chat');
-            }
-          } catch (serviceError) {
-            console.log('⚠️ Could not send service message:', serviceError.message);
-          }
+          // Note: Removed custom service message as Telegram automatically sends 
+          // service messages when high scores are achieved via setGameScore
           
           return {
             statusCode: 200,
@@ -147,6 +137,52 @@ exports.handler = async (event, context) => {
             })
           };
         }
+      }
+      
+      if (body.action === 'refresh_session') {
+        // Create new session for game replay (Issue #1 fix)
+        const oldSessionData = sessions.get(body.oldSessionId);
+        
+        if (!oldSessionData) {
+          return {
+            statusCode: 404,
+            headers,
+            body: JSON.stringify({
+              success: false,
+              error: 'Old session not found'
+            })
+          };
+        }
+        
+        // Create new session with same context but new ID
+        const newSessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const newSessionData = {
+          userId: oldSessionData.userId,
+          chatId: oldSessionData.chatId,
+          messageId: oldSessionData.messageId,
+          gameShortName: oldSessionData.gameShortName,
+          timestamp: new Date().toISOString()
+        };
+        
+        sessions.set(newSessionId, newSessionData);
+        console.log('🔄 Refreshed game session for replay:', {
+          oldSessionId: body.oldSessionId,
+          newSessionId: newSessionId,
+          sessionData: newSessionData
+        });
+        
+        // Clean up old session
+        sessions.delete(body.oldSessionId);
+        
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({
+            success: true,
+            newSessionId: newSessionId,
+            message: 'Session refreshed for replay'
+          })
+        };
       }
       
       return {
