@@ -215,11 +215,16 @@ function App() {
                 // Play life loss sound
                 playSound('lifeInteloss');
                 
+                // Check for game over OUTSIDE the state setter to avoid race conditions
                 if (newLives <= 0) {
                     // Game over - no lives left
                     console.log('🎮 GAME OVER SCENARIO: All lives lost');
                     console.log('📊 Lives before:', current, 'Lives after:', newLives);
-                    handleGameOver();
+                    
+                    // Use setTimeout to ensure state update completes first
+                    setTimeout(() => {
+                        handleGameOver();
+                    }, 0);
                 }
                 return newLives;
             });
@@ -363,7 +368,7 @@ function App() {
         }
     };
 
-    const startNewGame = () => {
+    const startNewGame = async () => {
         console.log("Starting new game...");
         
         // Stop any playing audio
@@ -397,16 +402,19 @@ function App() {
             if (currentSessionId) {
                 console.log("🔄 Existing session detected, requesting new session for replay");
                 
-                // Create a dummy context to request new session
-                fetch('/.netlify/functions/game-session', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        action: 'refresh_session',
-                        oldSessionId: currentSessionId
-                    })
-                }).then(response => response.json())
-                .then(result => {
+                try {
+                    // AWAIT the session refresh to ensure it completes before starting game
+                    const sessionResponse = await fetch('/.netlify/functions/game-session', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            action: 'refresh_session',
+                            oldSessionId: currentSessionId
+                        })
+                    });
+                    
+                    const result = await sessionResponse.json();
+                    
                     if (result.success && result.newSessionId) {
                         console.log(`✅ New session created for replay: ${result.newSessionId}`);
                         
@@ -419,9 +427,9 @@ function App() {
                     } else {
                         console.log("⚠️ Failed to create new session for replay, keeping existing");
                     }
-                }).catch(error => {
+                } catch (error) {
                     console.log("⚠️ Session refresh error:", error.message);
-                });
+                }
             }
         }
         
@@ -490,12 +498,9 @@ function App() {
 
     // Handle game over and report score to Telegram
     const handleGameOver = useCallback(async () => {
-        // Play audio and stop music
-        playSound('gameOver');
-        stopBackgroundMusic();
-        
         console.log('🎮 GAME OVER TRIGGERED!');
         console.log('📊 Final Score:', score);
+        console.log('📊 Current Lives:', lives);
         console.log('📊 Successful Drops:', successfulDrops);
         console.log('🔍 Environment Check:');
         console.log('  - isTelegramEnvironment:', isTelegramEnvironment);
@@ -504,6 +509,7 @@ function App() {
         console.log('  - typeof window.TelegramGameProxy.postScore:', typeof window.TelegramGameProxy?.postScore);
         console.log('  - Current URL:', window.location.href);
         console.log('  - URL hash:', window.location.hash);
+        console.log('  - SessionId in URL:', new URLSearchParams(window.location.search).get('sessionId'));
         
         // Enhanced TelegramGameProxy debugging
         if (window.TelegramGameProxy) {
@@ -522,6 +528,10 @@ function App() {
         
         // Capture score before state changes
         const finalScore = score;
+        
+        // Play audio and stop music
+        playSound('gameOver');
+        stopBackgroundMusic();
         
         // Set game state
         setGameFinished(true);
@@ -553,7 +563,7 @@ function App() {
             console.log('  - telegramReady:', telegramReady);
             console.log('Final score (standalone mode):', finalScore);
         }
-    }, [isTelegramEnvironment, telegramReady, reportScore, score, successfulDrops, playSound, stopBackgroundMusic, showAlert]);
+    }, [isTelegramEnvironment, telegramReady, reportScore, score, lives, successfulDrops, playSound, stopBackgroundMusic, showAlert]);
 
     const getCameraPosition = () => {
         // Keep camera at a fixed position since we want the base to sink down
