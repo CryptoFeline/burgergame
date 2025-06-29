@@ -165,7 +165,7 @@ function App() {
             setBGColor(bg);
         }
         //eslint-disable-next-line
-    }, [successfulDrops]);
+    }, [successfulDrops, BGColor]);
 
     const generateBox = () => {
         // Don't generate new boxes if game is paused or finished (but allow if game is started)
@@ -215,12 +215,7 @@ function App() {
                 // Play life loss sound
                 playSound('lifeInteloss');
                 
-                if (newLives <= 0) {
-                    // Game over - no lives left
-                    console.log('🎮 GAME OVER SCENARIO: All lives lost');
-                    console.log('📊 Lives before:', current, 'Lives after:', newLives);
-                    handleGameOver();
-                }
+                console.log('💔 Life lost! Lives before:', current, 'Lives after:', newLives);
                 return newLives;
             });
             
@@ -554,6 +549,16 @@ function App() {
             console.log('Final score (standalone mode):', finalScore);
         }
     }, [isTelegramEnvironment, telegramReady, reportScore, score, successfulDrops, playSound, stopBackgroundMusic, showAlert]);
+
+    // Watch for lives reaching 0 and trigger game over
+    useEffect(() => {
+        if (lives <= 0 && gameStarted && !gameFinished) {
+            console.log('🎮 GAME OVER SCENARIO: All lives lost (useEffect trigger)');
+            console.log('📊 Current score when lives lost:', score);
+            console.log('📊 Lives:', lives);
+            handleGameOver();
+        }
+    }, [lives, gameStarted, gameFinished, handleGameOver, score]);
 
     const getCameraPosition = () => {
         // Keep camera at a fixed position since we want the base to sink down
