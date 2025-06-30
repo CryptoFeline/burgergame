@@ -1,4 +1,4 @@
-import { React, useState, useEffect, useCallback } from "react";
+import { React, useState, useEffect, useCallback, useRef } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrthographicCamera } from "@react-three/drei";
 import BoxModel from "./Components/BoxModel";
@@ -81,6 +81,9 @@ function App() {
     const [successfulDrops, setSuccessfulDrops] = useState(0); // Count successful drops for scoring
     const [spawnCounter, setSpawnCounter] = useState(0); // Track spawns for alternating directions
     const [collisionBodies, setCollisionBodies] = useState(new Set()); // Track bodies that have collided
+    
+    // Ref to capture score at the moment of life loss (to avoid race conditions)
+    const scoreAtLifeLoss = useRef(null);
 
     const width = window.innerWidth;
     const height = window.innerHeight;
@@ -211,6 +214,20 @@ function App() {
             // Lose a life for the mesh that hit the ground
             setLives(current => {
                 const newLives = current - 1;
+                
+                // Deduct 1 point from score when life is lost (ingredient fell after hitting tower)
+                setScore(prevScore => {
+                    const newScore = Math.max(0, prevScore - 1); // Don't go below 0
+                    console.log('💔 Score deducted for life loss! Score before:', prevScore, 'Score after:', newScore);
+                    
+                    // Capture score for final life loss (after deduction)
+                    if (newLives <= 0) {
+                        scoreAtLifeLoss.current = newScore;
+                        console.log('💔 FINAL LIFE LOST - Captured score after deduction:', newScore);
+                    }
+                    
+                    return newScore;
+                });
                 
                 // Play life loss sound
                 playSound('lifeInteloss');
@@ -381,6 +398,9 @@ function App() {
         setSpawnCounter(0); // Reset spawn counter for alternating directions
         setBGColor("#000");
         
+        // Clear captured score from previous game
+        scoreAtLifeLoss.current = null;
+        
         // Start the game immediately - no session refresh needed
         // The original session from game launch supports multiple score submissions
         startGameAfterSessionSetup();
@@ -427,10 +447,8 @@ function App() {
         console.log('🎮 GAME OVER SCENARIO: Animation crossed limit');
         console.log('📊 Current state - gameFinished:', gameFinished, 'gamePaused:', gamePaused);
         
-        // Play audio BEFORE any state changes
-        // Now update state
+        // Set lives to 0 - this will trigger the useEffect to call handleGameOver()
         setLives(0);
-        handleGameOver();
         
         // Drop the top bun from above the tower to complete the burger
         let topBunHeight = TopBun.height;
@@ -452,13 +470,18 @@ function App() {
     };
 
     // Handle game over and report score to Telegram
-    const handleGameOver = useCallback(async () => {
+    const handleGameOver = useCallback(async (scoreOverride = null) => {
         // Play audio and stop music
         playSound('gameOver');
         stopBackgroundMusic();
         
+        // Use provided score or fall back to current state
+        const finalScore = scoreOverride !== null ? scoreOverride : score;
+        
         console.log('🎮 GAME OVER TRIGGERED!');
-        console.log('📊 Final Score:', score);
+        console.log('📊 Final Score:', finalScore);
+        console.log('📊 Score Override:', scoreOverride);
+        console.log('📊 State Score:', score);
         console.log('📊 Successful Drops:', successfulDrops);
         console.log('🔍 Environment Check:');
         console.log('  - isTelegramEnvironment:', isTelegramEnvironment);
@@ -482,9 +505,6 @@ function App() {
                 console.log(`  - ${method}:`, typeof window.TelegramGameProxy[method]);
             });
         }
-        
-        // Capture score before state changes
-        const finalScore = score;
         
         // Set game state
         setGameFinished(true);
@@ -522,9 +542,15 @@ function App() {
     useEffect(() => {
         if (lives <= 0 && gameStarted && !gameFinished) {
             console.log('🎮 GAME OVER SCENARIO: All lives lost (useEffect trigger)');
-            console.log('📊 Current score when lives lost:', score);
+            console.log('📊 Current score state:', score);
+            console.log('📊 Captured score at life loss:', scoreAtLifeLoss.current);
             console.log('📊 Lives:', lives);
-            handleGameOver();
+            
+            // Use captured score to avoid race condition
+            const scoreToUse = scoreAtLifeLoss.current !== null ? scoreAtLifeLoss.current : score;
+            console.log('🔍 LIVES LOST - Using score:', scoreToUse);
+            
+            handleGameOver(scoreToUse);
         }
     }, [lives, gameStarted, gameFinished, handleGameOver, score]);
 

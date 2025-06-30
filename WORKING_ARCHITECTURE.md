@@ -83,7 +83,10 @@ await fetch('/.netlify/functions/game-session', {
 - **Lives Lost Fix**: Moved `handleGameOver()` call from inside `setLives` callback to dedicated `useEffect` watching lives state
 - **Session Simplification**: Removed complex session refresh logic - original session persists for replays
 - **Score Persistence**: Sessions no longer deleted after first score submission
-- **Cleaner Code**: Removed unnecessary timing complexities and race condition handling
+- **Race Condition Fix**: Added `scoreAtLifeLoss` ref to capture exact score when lives reach 0
+- **Service Message Fix**: Fixed missing service messages for "lives lost" scenario via race condition fix
+- **Score Consistency**: Life loss now deducts 1 point from score (ingredient fell after hitting tower)
+- **Cleaner Code**: Removed unnecessary timing complexities and duplicate `handleGameOver()` calls
 
 ## 🔍 Testing & Debugging
 - Console shows game over scenarios: "🎮 GAME OVER SCENARIO: [reason]"
