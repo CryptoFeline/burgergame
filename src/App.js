@@ -381,45 +381,13 @@ function App() {
         setSpawnCounter(0); // Reset spawn counter for alternating directions
         setBGColor("#000");
         
-        // Request new session for replay games (Issue #1 fix)
-        if (isTelegramEnvironment) {
-            console.log("🔄 Requesting new session for game replay...");
-            
-            // Extract current sessionId to see if we're in a replay
-            const urlParams = new URLSearchParams(window.location.search);
-            const currentSessionId = urlParams.get('sessionId');
-            
-            if (currentSessionId) {
-                console.log("🔄 Existing session detected, requesting new session for replay");
-                
-                // Create a dummy context to request new session
-                fetch('/.netlify/functions/game-session', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        action: 'refresh_session',
-                        oldSessionId: currentSessionId
-                    })
-                }).then(response => response.json())
-                .then(result => {
-                    if (result.success && result.newSessionId) {
-                        console.log(`✅ New session created for replay: ${result.newSessionId}`);
-                        
-                        // Update URL with new sessionId
-                        const newUrl = new URL(window.location);
-                        newUrl.searchParams.set('sessionId', result.newSessionId);
-                        window.history.replaceState({}, '', newUrl);
-                        
-                        console.log("🔄 URL updated with new sessionId for replay");
-                    } else {
-                        console.log("⚠️ Failed to create new session for replay, keeping existing");
-                    }
-                }).catch(error => {
-                    console.log("⚠️ Session refresh error:", error.message);
-                });
-            }
-        }
-        
+        // Start the game immediately - no session refresh needed
+        // The original session from game launch supports multiple score submissions
+        startGameAfterSessionSetup();
+    };
+
+    // Helper function to start the game after session setup is complete
+    const startGameAfterSessionSetup = () => {
         // Start the game and generate first box with a single timeout
         setTimeout(() => {
             console.log("Setting game started to true and generating box...");

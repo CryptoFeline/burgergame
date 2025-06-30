@@ -19,12 +19,19 @@
 - `netlify/functions/game-session.js`:
   - `action: 'store'` - stores game context when launched
   - `action: 'submit_score'` - retrieves context and calls setGameScore
+  - Session persists for multiple score submissions (replay support)
   - In-memory session storage (Map)
   
 - `src/hooks/useTelegramGame.js`:
   - `reportScore()` function extracts sessionId from URL
   - Calls game-session endpoint with score
   - Only method that works - DO NOT ADD FALLBACKS
+
+- `src/App.js`:
+  - `handleGameOver()` called in all 3 scenarios (FIXED ✅)
+  - `startNewGame()` resets game state for replay (SIMPLIFIED ✅)
+  - `useEffect` watches for lives <= 0 to trigger game over (FIXED ✅)
+  - No session refresh needed - original session supports multiple games
 
 ### Critical Code Sections
 ```javascript
@@ -60,14 +67,30 @@ await fetch('/.netlify/functions/game-session', {
 });
 ```
 
-## 🎮 Game Over Scenarios (NEED FIXING)
-1. **Stop Button** ✅ - Currently working
-2. **Lives Lost** ❌ - handleGameOver not called  
-3. **Animation Complete** ❌ - handleGameOver not called
+## 🎮 Game Over Scenarios (ALL WORKING ✅)
+1. **Stop Button** ✅ - Working
+2. **Lives Lost** ✅ - Fixed with useEffect trigger  
+3. **Animation Complete** ✅ - Working
 
-## 🔄 Session Issues (NEED FIXING) 
-- First play works, replay fails (sessionId not refreshed)
-- Need session refresh mechanism for multiple plays
+## 🔄 Session Management (SIMPLIFIED ✅) 
+- **Single Session Per Launch**: One session supports unlimited replays ✅
+- **Persistent Session**: Session stays alive after score submission ✅ 
+- **Multiple Score Submissions**: Same session can submit multiple scores ✅
+- **Telegram API Compatibility**: `setGameScore` with `force: false` handles multiple submissions correctly ✅
+- **No Complex Refresh Logic**: Removed unnecessary session refresh complexity ✅
+
+## 🔧 Recent Fixes Applied
+- **Lives Lost Fix**: Moved `handleGameOver()` call from inside `setLives` callback to dedicated `useEffect` watching lives state
+- **Session Simplification**: Removed complex session refresh logic - original session persists for replays
+- **Score Persistence**: Sessions no longer deleted after first score submission
+- **Cleaner Code**: Removed unnecessary timing complexities and race condition handling
+
+## 🔍 Testing & Debugging
+- Console shows game over scenarios: "🎮 GAME OVER SCENARIO: [reason]"
+- Score submissions logged: "🎯 SCORE SUBMISSION with session context"
+- Session data preserved across multiple games from same launch
+- URL sessionId remains constant - no refresh needed
+- `setGameScore` called with `force: false` - only updates higher scores
 
 ## 🚫 NEVER MODIFY
 - Session-based architecture (only working solution)
