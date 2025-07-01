@@ -468,6 +468,9 @@ function App() {
                 // Add to falling blocks
                 setFallenBlocks(prev => [...prev, droppedBox]);
                 
+                // Clear the active box to make the animated ingredient disappear
+                setActiveBox(null);
+                
                 // Play impact sound for the dropped ingredient
                 setTimeout(() => {
                     playSound('impact');
@@ -605,6 +608,9 @@ function App() {
             // Add to falling blocks
             setFallenBlocks(prev => [...prev, droppedBox]);
             
+            // Clear the active box to make the animated ingredient disappear
+            setActiveBox(null);
+            
             // Play impact sound for the dropped ingredient
             setTimeout(() => {
                 playSound('impact');
@@ -634,6 +640,9 @@ function App() {
         
         // Move the base Bun down by the height of the top bun
         setTowerYOffset(current => current + topBunHeight);
+        
+        // Mark that we've already handled the top bun drop for this game over
+        setGameFinished(true);
     };
 
     // Handle game over and report score to Telegram
@@ -736,6 +745,9 @@ function App() {
                 // Add to falling blocks
                 setFallenBlocks(prev => [...prev, droppedBox]);
                 
+                // Clear the active box to make the animated ingredient disappear
+                setActiveBox(null);
+                
                 // Play impact sound for the dropped ingredient
                 setTimeout(() => {
                     playSound('impact');
@@ -745,23 +757,30 @@ function App() {
                 setTowerYOffset(current => current + height);
             }
             
-            // Drop the top bun from above the tower (same as other scenarios)
-            let topBunHeight = TopBun.height;
-            let stackHeight = successfulDrops > 0 ? (successfulDrops * 0.5) + towerYOffset : towerYOffset;
-            
-            let topBunBox = {
-                x: 0,
-                z: 0,
-                y: stackHeight + topBunHeight + ANIMATION_DROP_HEIGHT + 2,
-                ingredient: TopBun,
-                id: `topbun-lives-${Date.now()}`,
-            };
-            
-            // Add top bun to falling blocks
-            setFallenBlocks(prev => [...prev, topBunBox]);
-            
-            // Move the base Bun down by the height of the top bun
-            setTowerYOffset(current => current + topBunHeight);
+            // Only drop TopBun if it hasn't been dropped already (prevent double drop from overflow scenario)
+            const hasTopBun = fallenBlocks.some(block => block.ingredient === TopBun);
+            if (!hasTopBun) {
+                console.log('🍞 Dropping TopBun for lives lost scenario');
+                // Drop the top bun from above the tower (same as other scenarios)
+                let topBunHeight = TopBun.height;
+                let stackHeight = successfulDrops > 0 ? (successfulDrops * 0.5) + towerYOffset : towerYOffset;
+                
+                let topBunBox = {
+                    x: 0,
+                    z: 0,
+                    y: stackHeight + topBunHeight + ANIMATION_DROP_HEIGHT + 2,
+                    ingredient: TopBun,
+                    id: `topbun-lives-${Date.now()}`,
+                };
+                
+                // Add top bun to falling blocks
+                setFallenBlocks(prev => [...prev, topBunBox]);
+                
+                // Move the base Bun down by the height of the top bun
+                setTowerYOffset(current => current + topBunHeight);
+            } else {
+                console.log('🍞 TopBun already dropped, skipping duplicate');
+            }
             
             // Use captured score to avoid race condition
             const scoreToUse = scoreAtLifeLoss.current !== null ? scoreAtLifeLoss.current : score;
@@ -769,7 +788,7 @@ function App() {
             
             handleGameOver(scoreToUse);
         }
-    }, [lives, gameStarted, gameFinished, handleGameOver, score, activeBox, topBoxPosition, successfulDrops, towerYOffset, playSound]);
+    }, [lives, gameStarted, gameFinished, handleGameOver, score, activeBox, topBoxPosition, successfulDrops, towerYOffset, playSound, fallenBlocks]);
 
     const getCameraPosition = () => {
         // Keep camera at a fixed position since we want the base to sink down
