@@ -368,15 +368,15 @@ export default function AnimatedIngredient({ ingredient, position }) {
       <group position={position}>
         <mesh>
           <cylinderGeometry args={[radius, radius, 0.13, sides, 1, false]} />
-          <meshStandardMaterial color="#200D03" />
+          <meshStandardMaterial color="#4A1A0A" />
         </mesh>
         <mesh position={[0, 0.066, 0]} rotation={[-Math.PI / 2, 0, 0]}>
           <circleGeometry args={[radius, sides]} />
-          <meshStandardMaterial map={bbqFlatTextureProcessed} color="#200D03" />
+          <meshStandardMaterial map={bbqFlatTextureProcessed} color="#4A1A0A" />
         </mesh>
         <mesh position={[0, -0.066, 0]} rotation={[Math.PI / 2, 0, 0]}>
           <circleGeometry args={[radius, sides]} />
-          <meshStandardMaterial map={bbqFlatTextureProcessed} color="#200D03" />
+          <meshStandardMaterial map={bbqFlatTextureProcessed} color="#4A1A0A" />
         </mesh>
       </group>
     );

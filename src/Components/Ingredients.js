@@ -908,7 +908,7 @@ export const BBQ = ({ position, id, onCollide }) => {
     }
   }));
   
-  const sauceColor = isSticking ? "#200D03" : "#200D03";
+  const sauceColor = isSticking ? "#4A1A0A" : "#4A1A0A";
   const emissive = isSticking ? "#1A0802" : "#000000";
   const emissiveIntensity = isSticking ? 0.18 : 0;
   
