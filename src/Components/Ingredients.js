@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { useBox, useCylinder } from "@react-three/cannon";
 import { useLoader } from "@react-three/fiber";
 import { TextureLoader } from "three";
@@ -12,6 +12,13 @@ import onionFlatTexture from "../img/onion/flat.webp";
 import cheeseFlatTexture from "../img/cheese/flat.webp";
 import lettuceFlatTexture from "../img/lettuce/flat.webp";
 import topBunDomeTexture from "../img/topbun/dome.webp";
+
+// Sauce textures
+import ketchupTexture from "../img/sauces/ketchup.webp";
+import mayoTexture from "../img/sauces/mayo.webp";
+import mustardTexture from "../img/sauces/mustard.webp";
+import bbqTexture from "../img/sauces/bbq.webp";
+import ranchTexture from "../img/sauces/ranch.webp";
 
 // Shared texture configuration function
 const configureTexture = (texture, rotation = 0) => {
@@ -145,6 +152,7 @@ export const Patty = ({ position, id }) => {
 };
 Patty.height = 0.66;
 Patty.type = "patty";
+Patty.rarity = 1.0; // 100% spawn chance (common)
 
 // Tomato: medium heavy, thin, red, regular cylinder
 export const Tomato = ({ position, id }) => {
@@ -206,6 +214,7 @@ export const Tomato = ({ position, id }) => {
 };
 Tomato.height = 0.25;
 Tomato.type = "tomato";
+Tomato.rarity = 0.8; // 80% spawn chance (common)
 
 // Onion: medium heavy, thin, dirty white, regular cylinder
 export const Onion = ({ position, id }) => {
@@ -267,9 +276,12 @@ export const Onion = ({ position, id }) => {
 };
 Onion.height = 0.25;
 Onion.type = "onion";
+Onion.rarity = 0.8; // 80% spawn chance (common)
 
-// Cheese: light, box, thin, yellow
-export const Cheese = ({ position, id }) => {
+// Cheese: light, box, thin, yellow - STICKY ingredient
+export const Cheese = ({ position, id, onCollide }) => {
+  const [isMelting, setIsMelting] = useState(false);
+  
   // Load texture for the cheese
   const cheeseFlatTextureBase = useLoader(TextureLoader, cheeseFlatTexture);
   
@@ -286,36 +298,80 @@ export const Cheese = ({ position, id }) => {
     return tex;
   }, [cheeseFlatTextureBase]);
 
+  // Enhanced collision handler that triggers melting visual effect
+  const handleCollision = useCallback((e) => {
+    console.log('🧀 Cheese collision detected!', { 
+      target: e.target?.userData?.id || 'unknown',
+      body: e.body?.userData?.id || 'unknown'
+    });
+    
+    // Trigger melting visual effect
+    setIsMelting(true);
+    console.log('🔥 Cheese is now melting!');
+    
+    // Call the parent collision handler if provided
+    if (onCollide) {
+      onCollide(e);
+    }
+    
+    // Reset melting effect after some time
+    setTimeout(() => {
+      setIsMelting(false);
+      console.log('❄️ Cheese melting effect ended');
+    }, 3000); // Melting effect lasts 3 seconds
+  }, [onCollide]);
+
   const [ref] = useBox(() => ({
     mass: 1,
     position,
     args: [3, 0.1, 3],
     type: "Dynamic",
+    onCollide: handleCollision,       // Use enhanced collision handler
     material: { 
-      restitution: 0,
-      friction: 1.0,
-      frictionEquationStiffness: 1e8,
-      frictionEquationRelaxation: 3,
-      contactEquationStiffness: 1e8,
-      contactEquationRelaxation: 3
+      restitution: 0,           // No bounce - cheese sticks
+      friction: 3.0,            // Very high friction - melted cheese is sticky
+      frictionEquationStiffness: 1e9,  // Higher stiffness for better sticking
+      frictionEquationRelaxation: 2,   // Lower relaxation for stronger grip
+      contactEquationStiffness: 1e9,
+      contactEquationRelaxation: 2
     },
-    linearDamping: 0.7,
-    angularDamping: 0.7,
-    userData: { id: id || `cheese-${Date.now()}` }
+    linearDamping: 0.9,         // High damping - cheese doesn't slide much
+    angularDamping: 0.9,        // High angular damping - less spinning
+    userData: { 
+      id: id || `cheese-${Date.now()}`,
+      isSticky: true,           // Mark cheese as sticky ingredient
+      stickyStrength: 1.0       // How strongly it sticks (0-1)
+    }
   }));
+  
+  // Dynamic material that changes when melting
+  const cheeseColor = isMelting ? "#FFD700" : "#FFF8DC"; // Gold when melting, cream when normal
+  const emissive = isMelting ? "#FF6600" : "#000000"; // Orange glow when melting
+  const emissiveIntensity = isMelting ? 0.3 : 0;
   
   return (
     <mesh ref={ref} position={position}>
       <boxGeometry args={[3, 0.1, 3]} />
-      <meshStandardMaterial map={flatTexture} />
+      <meshStandardMaterial 
+        map={flatTexture} 
+        color={cheeseColor}
+        emissive={emissive}
+        emissiveIntensity={emissiveIntensity}
+        transparent={isMelting}
+        opacity={isMelting ? 0.8 : 1.0}
+      />
     </mesh>
   );
 };
 Cheese.height = 0.1;
 Cheese.type = "cheese";
+Cheese.rarity = 0.6; // 60% spawn chance (common)
+Cheese.isSticky = true;  // Mark cheese as sticky for gameplay mechanics
 
-// Lettuce: light, 8-sided green cylinder, as thin as cheese
-export const Lettuce = ({ position, id }) => {
+// Lettuce: light, 8-sided green cylinder, as thin as cheese - MILDLY STICKY ingredient
+export const Lettuce = ({ position, id, onCollide }) => {
+  const [isSticking, setIsSticking] = useState(false);
+  
   // Load texture for top and bottom faces
   const lettuceFlatTextureBase = useLoader(TextureLoader, lettuceFlatTexture);
   
@@ -332,30 +388,67 @@ export const Lettuce = ({ position, id }) => {
     return tex;
   }, [lettuceFlatTextureBase]);
 
+  // Enhanced collision handler for mild stickiness
+  const handleCollision = useCallback((e) => {
+    console.log('🥬 Lettuce collision detected!', { 
+      target: e.target?.userData?.id || 'unknown',
+      body: e.body?.userData?.id || 'unknown'
+    });
+    
+    // Trigger mild sticking visual effect
+    setIsSticking(true);
+    console.log('🌿 Lettuce is sticking slightly!');
+    
+    // Call the parent collision handler if provided
+    if (onCollide) {
+      onCollide(e);
+    }
+    
+    // Reset sticking effect after shorter time than cheese
+    setTimeout(() => {
+      setIsSticking(false);
+      console.log('🌱 Lettuce sticking effect ended');
+    }, 1500); // Shorter effect than cheese
+  }, [onCollide]);
+
   const [ref] = useCylinder(() => ({
     mass: 1,
     position,
     args: [2.0, 2.0, 0.1, 8],
     type: "Dynamic",
+    onCollide: handleCollision,
     material: { 
-      restitution: 0,
-      friction: 1.0,
+      restitution: 0.1,      // Reduced bounce for slight stickiness
+      friction: 2.5,         // Increased friction
       frictionEquationStiffness: 1e8,
       frictionEquationRelaxation: 3,
       contactEquationStiffness: 1e8,
       contactEquationRelaxation: 3
     },
-    linearDamping: 0.7,
-    angularDamping: 0.7,
-    userData: { id: id || `lettuce-${Date.now()}` }
+    linearDamping: 0.8,      // Slightly higher damping
+    angularDamping: 0.8,
+    userData: { 
+      id: id || `lettuce-${Date.now()}`,
+      isSticky: true,        // Mark lettuce as mildly sticky
+      stickyStrength: 0.3    // Much weaker than cheese (0.3 vs 1.0)
+    }
   }));
+  
+  // Dynamic material that changes when sticking (subtle effect for lettuce)
+  const lettuceColor = isSticking ? "#66BB6A" : "#4CAF50"; // Slightly brighter green when sticking
+  const emissive = isSticking ? "#2E7D32" : "#000000"; // Subtle green glow when sticking
+  const emissiveIntensity = isSticking ? 0.1 : 0; // Much subtler than cheese
   
   return (
     <group ref={ref} position={position}>
       {/* Main cylinder body with side color */}
       <mesh>
         <cylinderGeometry args={[2.0, 2.0, 0.08, 8, 1, false]} />
-        <meshStandardMaterial color="#4caf50" />
+        <meshStandardMaterial 
+          color={lettuceColor}
+          emissive={emissive}
+          emissiveIntensity={emissiveIntensity}
+        />
       </mesh>
       
       {/* Top face with flat texture */}
@@ -374,6 +467,7 @@ export const Lettuce = ({ position, id }) => {
 };
 Lettuce.height = 0.1;
 Lettuce.type = "lettuce";
+Lettuce.rarity = 0.7; // 70% spawn chance (common)
 
 // TopBun: domed top bun with realistic half-sphere shape
 export const TopBun = ({ position, isStatic, id }) => {
@@ -415,8 +509,8 @@ export const TopBun = ({ position, isStatic, id }) => {
   // Physics hook must run first - don't conditionally return null before this
   const [ref] = useCylinder(() => ({
     mass: isStatic ? 0 : 2,
-    position,
-    args: [2.0, 2.0, 1, 32], // Physics shape uses cylinder for stability
+    position: [position[0], position[1] + 0.25, position[2]], // Offset physics shape up by half its height
+    args: [2.0, 2.0, 0.5, 32], // Reduced height from 1.0 to 0.5 to match visual
     type: isStatic ? "Static" : "Dynamic",
     material: { 
       restitution: 0,
@@ -491,7 +585,470 @@ export const TopBun = ({ position, isStatic, id }) => {
     </group>
   );
 };
-TopBun.height = 1;
+TopBun.height = 0.5; // Updated to match actual visual height (half-sphere scaled to 0.5)
 TopBun.type = "topbun";
 
-export const INGREDIENTS = [Patty, Tomato, Onion, Cheese, Lettuce];
+// SAUCE INGREDIENTS - Based on tomato/onion flat cylinder shape but smaller and stickier
+
+// Ketchup: Red sauce, very sticky
+export const Ketchup = ({ position, id, onCollide }) => {
+  const [isSticking, setIsSticking] = useState(false);
+  
+  // Load ketchup texture
+  const ketchupTextureBase = useLoader(TextureLoader, ketchupTexture);
+  
+  // Configure texture
+  const flatTexture = useMemo(() => {
+    const tex = ketchupTextureBase.clone();
+    if (tex) {
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(1, 1);
+      tex.flipY = false;
+      tex.needsUpdate = true;
+    }
+    return tex;
+  }, [ketchupTextureBase]);
+
+  // Enhanced collision handler for maximum stickiness
+  const handleCollision = useCallback((e) => {
+    console.log('🍅 Ketchup collision detected!');
+    setIsSticking(true);
+    if (onCollide) onCollide(e);
+    setTimeout(() => setIsSticking(false), 2000);
+  }, [onCollide]);
+
+  const [ref] = useCylinder(() => ({
+    mass: 2, // Lighter than tomato (4)
+    position,
+    args: [2.0, 2.0, 0.15, 32], // Same radius as tomato/onion (2.0), thinner (0.15 vs 0.25)
+    type: "Dynamic",
+    onCollide: handleCollision,
+    material: {
+      restitution: 0,           // No bounce at all
+      friction: 4.0,            // Much higher than tomato (0.95)
+      frictionEquationStiffness: 1e10,
+      frictionEquationRelaxation: 1,
+      contactEquationStiffness: 1e10,
+      contactEquationRelaxation: 1
+    },
+    linearDamping: 0.95,        // Much higher than tomato (0.6)
+    angularDamping: 0.95,
+    userData: { 
+      id: id || `ketchup-${Date.now()}`,
+      isSticky: true,
+      stickyStrength: 1.0
+    }
+  }));
+  
+  // Dynamic visual effects
+  const sauceColor = isSticking ? "#7B1F10" : "#7B1F10";
+  const emissive = isSticking ? "#5A0000" : "#000000";
+  const emissiveIntensity = isSticking ? 0.2 : 0;
+  
+  return (
+    <group ref={ref} position={position}>
+      {/* Main cylinder body with side color */}
+      <mesh>
+        <cylinderGeometry args={[2.0, 2.0, 0.13, 32, 1, false]} />
+        <meshStandardMaterial 
+          color={sauceColor}
+          emissive={emissive}
+          emissiveIntensity={emissiveIntensity}
+        />
+      </mesh>
+      
+      {/* Top face with sauce texture */}
+      <mesh position={[0, 0.066, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[2.0, 32]} />
+        <meshStandardMaterial 
+          map={flatTexture}
+          color={sauceColor}
+          emissive={emissive}
+          emissiveIntensity={emissiveIntensity}
+        />
+      </mesh>
+      
+      {/* Bottom face with sauce texture */}
+      <mesh position={[0, -0.066, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[2.0, 32]} />
+        <meshStandardMaterial 
+          map={flatTexture}
+          color={sauceColor}
+          emissive={emissive}
+          emissiveIntensity={emissiveIntensity}
+        />
+      </mesh>
+    </group>
+  );
+};
+Ketchup.height = 0.15;
+Ketchup.type = "ketchup";
+Ketchup.rarity = 0.15; // 15% spawn chance (rare)
+
+// Mayo: White sauce, extremely sticky
+export const Mayo = ({ position, id, onCollide }) => {
+  const [isSticking, setIsSticking] = useState(false);
+  
+  const mayoTextureBase = useLoader(TextureLoader, mayoTexture);
+  
+  const flatTexture = useMemo(() => {
+    const tex = mayoTextureBase.clone();
+    if (tex) {
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(1, 1);
+      tex.flipY = false;
+      tex.needsUpdate = true;
+    }
+    return tex;
+  }, [mayoTextureBase]);
+
+  const handleCollision = useCallback((e) => {
+    console.log('🤍 Mayo collision detected!');
+    setIsSticking(true);
+    if (onCollide) onCollide(e);
+    setTimeout(() => setIsSticking(false), 2500);
+  }, [onCollide]);
+
+  const [ref] = useCylinder(() => ({
+    mass: 1.8,
+    position,
+    args: [2.0, 2.0, 0.15, 32],
+    type: "Dynamic",
+    onCollide: handleCollision,
+    material: {
+      restitution: 0,
+      friction: 5.0,            // Even higher friction
+      frictionEquationStiffness: 1e10,
+      frictionEquationRelaxation: 1,
+      contactEquationStiffness: 1e10,
+      contactEquationRelaxation: 1
+    },
+    linearDamping: 0.98,        // Extremely high damping
+    angularDamping: 0.98,
+    userData: { 
+      id: id || `mayo-${Date.now()}`,
+      isSticky: true,
+      stickyStrength: 1.2
+    }
+  }));
+  
+  const sauceColor = isSticking ? "#DDCC9F" : "#DDCC9F";
+  const emissive = isSticking ? "#C8B082" : "#000000";
+  const emissiveIntensity = isSticking ? 0.15 : 0;
+  
+  return (
+    <group ref={ref} position={position}>
+      <mesh>
+        <cylinderGeometry args={[2.0, 2.0, 0.13, 32, 1, false]} />
+        <meshStandardMaterial 
+          color={sauceColor}
+          emissive={emissive}
+          emissiveIntensity={emissiveIntensity}
+        />
+      </mesh>
+      <mesh position={[0, 0.066, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[2.0, 32]} />
+        <meshStandardMaterial 
+          map={flatTexture}
+          color={sauceColor}
+          emissive={emissive}
+          emissiveIntensity={emissiveIntensity}
+        />
+      </mesh>
+      <mesh position={[0, -0.066, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[2.0, 32]} />
+        <meshStandardMaterial 
+          map={flatTexture}
+          color={sauceColor}
+          emissive={emissive}
+          emissiveIntensity={emissiveIntensity}
+        />
+      </mesh>
+    </group>
+  );
+};
+Mayo.height = 0.15;
+Mayo.type = "mayo";
+Mayo.rarity = 0.15; // 15% spawn chance (rare)
+
+// Mustard: Yellow sauce, moderately sticky
+export const Mustard = ({ position, id, onCollide }) => {
+  const [isSticking, setIsSticking] = useState(false);
+  
+  const mustardTextureBase = useLoader(TextureLoader, mustardTexture);
+  
+  const flatTexture = useMemo(() => {
+    const tex = mustardTextureBase.clone();
+    if (tex) {
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(1, 1);
+      tex.flipY = false;
+      tex.needsUpdate = true;
+    }
+    return tex;
+  }, [mustardTextureBase]);
+
+  const handleCollision = useCallback((e) => {
+    console.log('💛 Mustard collision detected!');
+    setIsSticking(true);
+    if (onCollide) onCollide(e);
+    setTimeout(() => setIsSticking(false), 1500);
+  }, [onCollide]);
+
+  const [ref] = useCylinder(() => ({
+    mass: 2.2,
+    position,
+    args: [2.0, 2.0, 0.15, 32],
+    type: "Dynamic",
+    onCollide: handleCollision,
+    material: {
+      restitution: 0,
+      friction: 3.0,            // Moderate stickiness
+      frictionEquationStiffness: 1e9,
+      frictionEquationRelaxation: 2,
+      contactEquationStiffness: 1e9,
+      contactEquationRelaxation: 2
+    },
+    linearDamping: 0.85,
+    angularDamping: 0.85,
+    userData: { 
+      id: id || `mustard-${Date.now()}`,
+      isSticky: true,
+      stickyStrength: 0.7
+    }
+  }));
+  
+  const sauceColor = isSticking ? "#C08A2F" : "#C08A2F";
+  const emissive = isSticking ? "#B8791F" : "#000000";
+  const emissiveIntensity = isSticking ? 0.1 : 0;
+  
+  return (
+    <group ref={ref} position={position}>
+      <mesh>
+        <cylinderGeometry args={[2.0, 2.0, 0.13, 32, 1, false]} />
+        <meshStandardMaterial 
+          color={sauceColor}
+          emissive={emissive}
+          emissiveIntensity={emissiveIntensity}
+        />
+      </mesh>
+      <mesh position={[0, 0.066, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[2.0, 32]} />
+        <meshStandardMaterial 
+          map={flatTexture}
+          color={sauceColor}
+          emissive={emissive}
+          emissiveIntensity={emissiveIntensity}
+        />
+      </mesh>
+      <mesh position={[0, -0.066, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[2.0, 32]} />
+        <meshStandardMaterial 
+          map={flatTexture}
+          color={sauceColor}
+          emissive={emissive}
+          emissiveIntensity={emissiveIntensity}
+        />
+      </mesh>
+    </group>
+  );
+};
+Mustard.height = 0.15;
+Mustard.type = "mustard";
+Mustard.rarity = 0.15; // 15% spawn chance (rare)
+
+// BBQ: Dark brown sauce, very sticky
+export const BBQ = ({ position, id, onCollide }) => {
+  const [isSticking, setIsSticking] = useState(false);
+  
+  const bbqTextureBase = useLoader(TextureLoader, bbqTexture);
+  
+  const flatTexture = useMemo(() => {
+    const tex = bbqTextureBase.clone();
+    if (tex) {
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(1, 1);
+      tex.flipY = false;
+      tex.needsUpdate = true;
+    }
+    return tex;
+  }, [bbqTextureBase]);
+
+  const handleCollision = useCallback((e) => {
+    console.log('🟤 BBQ sauce collision detected!');
+    setIsSticking(true);
+    if (onCollide) onCollide(e);
+    setTimeout(() => setIsSticking(false), 2200);
+  }, [onCollide]);
+
+  const [ref] = useCylinder(() => ({
+    mass: 2,
+    position,
+    args: [2.0, 2.0, 0.15, 32],
+    type: "Dynamic",
+    onCollide: handleCollision,
+    material: {
+      restitution: 0,
+      friction: 4.5,            // High stickiness
+      frictionEquationStiffness: 1e10,
+      frictionEquationRelaxation: 1,
+      contactEquationStiffness: 1e10,
+      contactEquationRelaxation: 1
+    },
+    linearDamping: 0.92,
+    angularDamping: 0.92,
+    userData: { 
+      id: id || `bbq-${Date.now()}`,
+      isSticky: true,
+      stickyStrength: 1.1
+    }
+  }));
+  
+  const sauceColor = isSticking ? "#200D03" : "#200D03";
+  const emissive = isSticking ? "#1A0802" : "#000000";
+  const emissiveIntensity = isSticking ? 0.18 : 0;
+  
+  return (
+    <group ref={ref} position={position}>
+      <mesh>
+        <cylinderGeometry args={[2.0, 2.0, 0.13, 32, 1, false]} />
+        <meshStandardMaterial 
+          color={sauceColor}
+          emissive={emissive}
+          emissiveIntensity={emissiveIntensity}
+        />
+      </mesh>
+      <mesh position={[0, 0.066, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[2.0, 32]} />
+        <meshStandardMaterial 
+          map={flatTexture}
+          color={sauceColor}
+          emissive={emissive}
+          emissiveIntensity={emissiveIntensity}
+        />
+      </mesh>
+      <mesh position={[0, -0.066, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[2.0, 32]} />
+        <meshStandardMaterial 
+          map={flatTexture}
+          color={sauceColor}
+          emissive={emissive}
+          emissiveIntensity={emissiveIntensity}
+        />
+      </mesh>
+    </group>
+  );
+};
+BBQ.height = 0.15;
+BBQ.type = "bbq";
+BBQ.rarity = 0.10; // 10% spawn chance (very rare)
+
+// Ranch: Light green sauce, sticky
+export const Ranch = ({ position, id, onCollide }) => {
+  const [isSticking, setIsSticking] = useState(false);
+  
+  const ranchTextureBase = useLoader(TextureLoader, ranchTexture);
+  
+  const flatTexture = useMemo(() => {
+    const tex = ranchTextureBase.clone();
+    if (tex) {
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(1, 1);
+      tex.flipY = false;
+      tex.needsUpdate = true;
+    }
+    return tex;
+  }, [ranchTextureBase]);
+
+  const handleCollision = useCallback((e) => {
+    console.log('🥗 Ranch collision detected!');
+    setIsSticking(true);
+    if (onCollide) onCollide(e);
+    setTimeout(() => setIsSticking(false), 1800);
+  }, [onCollide]);
+
+  const [ref] = useCylinder(() => ({
+    mass: 2,
+    position,
+    args: [2.0, 2.0, 0.15, 32],
+    type: "Dynamic",
+    onCollide: handleCollision,
+    material: {
+      restitution: 0,
+      friction: 3.5,            // Good stickiness
+      frictionEquationStiffness: 1e9,
+      frictionEquationRelaxation: 1,
+      contactEquationStiffness: 1e9,
+      contactEquationRelaxation: 1
+    },
+    linearDamping: 0.88,
+    angularDamping: 0.88,
+    userData: { 
+      id: id || `ranch-${Date.now()}`,
+      isSticky: true,
+      stickyStrength: 0.9
+    }
+  }));
+  
+  const sauceColor = isSticking ? "#D1C699" : "#D1C699";
+  const emissive = isSticking ? "#C5BA88" : "#000000";
+  const emissiveIntensity = isSticking ? 0.12 : 0;
+  
+  return (
+    <group ref={ref} position={position}>
+      <mesh>
+        <cylinderGeometry args={[2.0, 2.0, 0.13, 32, 1, false]} />
+        <meshStandardMaterial 
+          color={sauceColor}
+          emissive={emissive}
+          emissiveIntensity={emissiveIntensity}
+        />
+      </mesh>
+      <mesh position={[0, 0.066, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[2.0, 32]} />
+        <meshStandardMaterial 
+          map={flatTexture}
+          color={sauceColor}
+          emissive={emissive}
+          emissiveIntensity={emissiveIntensity}
+        />
+      </mesh>
+      <mesh position={[0, -0.066, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[2.0, 32]} />
+        <meshStandardMaterial 
+          map={flatTexture}
+          color={sauceColor}
+          emissive={emissive}
+          emissiveIntensity={emissiveIntensity}
+        />
+      </mesh>
+    </group>
+  );
+};
+Ranch.height = 0.15;
+Ranch.type = "ranch";
+Ranch.rarity = 0.10; // 10% spawn chance (very rare)
+
+export const INGREDIENTS = [Patty, Tomato, Onion, Cheese, Lettuce, Ketchup, Mayo, Mustard, BBQ, Ranch];
+
+// Weighted random selection based on ingredient rarity
+export const getRandomIngredient = () => {
+  // Create a pool of ingredients based on their rarity weights
+  const weightedPool = [];
+  
+  INGREDIENTS.forEach(ingredient => {
+    const weight = Math.round((ingredient.rarity || 1.0) * 100); // Convert to integer weight
+    for (let i = 0; i < weight; i++) {
+      weightedPool.push(ingredient);
+    }
+  });
+  
+  // Pick a random ingredient from the weighted pool
+  const randomIndex = Math.floor(Math.random() * weightedPool.length);
+  return weightedPool[randomIndex];
+};

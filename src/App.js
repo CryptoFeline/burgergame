@@ -9,7 +9,7 @@ import Preloader from "./Components/Preloader";
 import GroundCollider from "./Components/GroundCollider";
 import { Physics } from "@react-three/cannon";
 import { nanoid } from "nanoid";
-import { Bun, TopBun, INGREDIENTS } from "./Components/Ingredients";
+import { Bun, TopBun, getRandomIngredient } from "./Components/Ingredients";
 import { useAudio } from "./hooks/useAudio";
 import { usePreloader } from "./hooks/usePreloader";
 import { useTelegramGame } from "./hooks/useTelegramGame";
@@ -81,6 +81,7 @@ function App() {
     const [successfulDrops, setSuccessfulDrops] = useState(0); // Count successful drops for scoring
     const [spawnCounter, setSpawnCounter] = useState(0); // Track spawns for alternating directions
     const [collisionBodies, setCollisionBodies] = useState(new Set()); // Track bodies that have collided
+    const [stickyJoints, setStickyJoints] = useState(new Map()); // Track sticky connections between ingredients
     
     // Ref to capture score at the moment of life loss (to avoid race conditions)
     const scoreAtLifeLoss = useRef(null);
@@ -179,8 +180,8 @@ function App() {
         // Play ingredient spawn sound
         playSound('ingredientSpawn');
         
-        // Pick a random ingredient except Bun
-        const Ingredient = INGREDIENTS[Math.floor(Math.random() * INGREDIENTS.length)];
+        // Pick a random ingredient based on rarity weights
+        const Ingredient = getRandomIngredient();
         setActiveBox({ ingredient: Ingredient });
         
         // Increment spawn counter for alternating directions
@@ -189,6 +190,12 @@ function App() {
 
     // Ground collision detection for lives system
     const onGroundCollision = (e) => {
+        // Skip if game is finished or paused to prevent post-game effects
+        if (gameFinished || gamePaused) {
+            console.log('⏸️ Game over - ignoring ground collision effects');
+            return;
+        }
+        
         // Get the ID from the colliding body's userData
         const collidingId = e.body?.userData?.id;
         
@@ -249,6 +256,124 @@ function App() {
             });
         }, 500);
     };
+
+    // Handle collisions between ingredients for sticky behavior
+    const handleIngredientCollision = useCallback((e) => {
+        console.log('🔍 Ingredient collision event received:', e);
+        
+        const bodyA = e.body;
+        const bodyB = e.target;
+        
+        console.log('🔍 Collision bodies:', { 
+            bodyA: bodyA?.userData?.id || 'unknown',
+            bodyAType: bodyA?.userData?.type || 'unknown',
+            bodyB: bodyB?.userData?.id || 'unknown',
+            bodyBType: bodyB?.userData?.type || 'unknown'
+        });
+        
+        // Get ingredient data from collision bodies
+        const ingredientA = bodyA?.userData;
+        const ingredientB = bodyB?.userData;
+        
+        if (!ingredientA || !ingredientB) {
+            console.log('⚠️ Missing ingredient data, skipping collision');
+            return;
+        }
+        
+        // Check if either ingredient is sticky (cheese)
+        const stickyIngredient = ingredientA.isSticky ? ingredientA : (ingredientB.isSticky ? ingredientB : null);
+        const otherIngredient = ingredientA.isSticky ? ingredientB : ingredientA;
+        const stickyBody = ingredientA.isSticky ? bodyA : bodyB;
+        const otherBody = ingredientA.isSticky ? bodyB : bodyA;
+        
+        if (stickyIngredient && otherIngredient && !gameFinished && !gamePaused) {
+            console.log('🧀 STICKY COLLISION:', stickyIngredient.id, 'melting onto', otherIngredient.id);
+            
+            // Create a unique connection key
+            const jointKey = `${stickyIngredient.id}-${otherIngredient.id}`;
+            
+            // Check if this connection already exists to avoid duplicate effects
+            if (stickyJoints.has(jointKey)) {
+                return;
+            }
+            
+            // Apply realistic melting/sticking physics based on ingredient strength
+            const stickyStrength = stickyIngredient.stickyStrength || 1.0;
+            const meltingForce = 2.0 + (stickyStrength * 2.0); // 2.0-4.0 range
+            const dampingForce = 0.8 + (stickyStrength * 0.15); // 0.8-0.95 range
+            
+            console.log('🔧 Applying sticky physics:', { stickyStrength, meltingForce, dampingForce });
+            
+            // Apply downward "melting/sticking" force and reduce movement
+            stickyBody.applyImpulse([0, -meltingForce, 0], [0, 0, 0]);
+            
+            // Adjust damping based on stickiness strength
+            stickyBody.linearDamping = dampingForce;
+            stickyBody.angularDamping = dampingForce;
+            
+            // Adjust mass based on stickiness (cheese gets lighter, lettuce stays normal)
+            if (stickyStrength > 0.8) {
+                stickyBody.mass = 0.5; // Only for very sticky ingredients like cheese
+            }
+            
+            // Set friction based on stickiness strength
+            const frictionLevel = 2.0 + (stickyStrength * 3.0); // 2.0-5.0 range
+            stickyBody.material.friction = frictionLevel;
+            stickyBody.material.frictionEquationStiffness = 1e9 * stickyStrength;
+            
+            // Store the sticky connection with enhanced properties
+            setStickyJoints(prev => {
+                const newJoints = new Map(prev);
+                newJoints.set(jointKey, {
+                    stickyId: stickyIngredient.id,
+                    otherId: otherIngredient.id,
+                    stickyBody: stickyBody,
+                    otherBody: otherBody,
+                    timestamp: Date.now(),
+                    strength: stickyIngredient.stickyStrength || 1.0
+                });
+                return newJoints;
+            });
+            
+            // Play a special sticky/melting sound effect
+            playSound('impact'); // Could add a special "sizzle" sound for melting cheese
+            
+            // Apply ongoing sticky forces to maintain connection
+            const maintainStickiness = () => {
+                if (gameFinished || gamePaused) return;
+                
+                // Get current positions
+                const stickyPos = stickyBody.position;
+                const otherPos = otherBody.position;
+                
+                // Calculate distance and direction
+                const dx = otherPos.x - stickyPos.x;
+                const dy = otherPos.y - stickyPos.y;
+                const dz = otherPos.z - stickyPos.z;
+                const distance = Math.sqrt(dx*dx + dy*dy + dz*dz);
+                
+                // If ingredients are separating, apply attractive force (cheese stretching)
+                if (distance > 0.5) { // Only if they're getting too far apart
+                    const attractiveForce = 2.0;
+                    const normalizedForce = attractiveForce / Math.max(distance, 0.1);
+                    
+                    stickyBody.applyForce([
+                        dx * normalizedForce,
+                        dy * normalizedForce * 0.5, // Less upward pull, more lateral
+                        dz * normalizedForce
+                    ], [0, 0, 0]);
+                }
+            };
+            
+            // Set up periodic force application to maintain stickiness
+            const stickyInterval = setInterval(maintainStickiness, 100); // Every 100ms
+            
+            // Clean up interval after some time or when game ends
+            setTimeout(() => {
+                clearInterval(stickyInterval);
+            }, 10000); // Stop after 10 seconds
+        }
+    }, [gameFinished, gamePaused, playSound, stickyJoints]);
 
     const renderBoxes = () => {
         return stack.map((box, index) => {
@@ -349,7 +474,7 @@ function App() {
                 }, 750);
                 
                 // Move the base Bun down by the height of the dropped ingredient
-                setTowerYOffset(towerYOffset + height);
+                setTowerYOffset(current => current + height);
             }
             
             setGamePaused(true);
@@ -371,7 +496,7 @@ function App() {
             setFallenBlocks(prev => [...prev, topBunBox]);
             
             // Move the base Bun down by the height of the top bun
-            setTowerYOffset(towerYOffset + topBunHeight);
+            setTowerYOffset(current => current + topBunHeight);
         }
     };
 
@@ -417,7 +542,7 @@ function App() {
             startBackgroundMusic();
             
             // Generate box immediately after setting game started
-            const Ingredient = INGREDIENTS[Math.floor(Math.random() * INGREDIENTS.length)];
+            const Ingredient = getRandomIngredient();
             setActiveBox({ ingredient: Ingredient });
             setSpawnCounter(1); // Set to 1 for the first spawn
         }, 300); // Increased delay to ensure all state updates
@@ -427,13 +552,23 @@ function App() {
         return fallenBlocks.map((box) => {
             const Ingredient = box.ingredient;
             const key = box.id || `fallen-${Date.now()}-${Math.random()}`;
-            return (
-                <Ingredient
-                    key={key}
-                    position={[box.x, box.y, box.z]}
-                    id={box.id} // Pass the ID to the ingredient
-                />
-            );
+            
+            // Pass collision handler to sticky ingredients (like cheese)
+            const ingredientProps = {
+                key,
+                position: [box.x, box.y, box.z],
+                id: box.id
+            };
+            
+            // Add collision handler for sticky ingredients
+            if (Ingredient.type === 'cheese' || Ingredient.type === 'lettuce' || 
+                Ingredient.type === 'ketchup' || Ingredient.type === 'mayo' || 
+                Ingredient.type === 'mustard' || Ingredient.type === 'bbq' || 
+                Ingredient.type === 'ranch') {
+                ingredientProps.onCollide = handleIngredientCollision;
+            }
+            
+            return <Ingredient {...ingredientProps} />;
         });
     };
 
@@ -446,6 +581,38 @@ function App() {
         
         console.log('🎮 GAME OVER SCENARIO: Animation crossed limit');
         console.log('📊 Current state - gameFinished:', gameFinished, 'gamePaused:', gamePaused);
+        
+        // Drop active ingredient if there is one (similar to stop button behavior)
+        if (activeBox) {
+            console.log('🎯 Dropping active ingredient on animation overflow');
+            playSound('drop');
+            
+            let Ingredient = activeBox.ingredient;
+            let height = Ingredient.height;
+            
+            // Create unique ID for this drop
+            const dropId = `overflow-drop-${Date.now()}-${Math.random()}`;
+            
+            // Drop the ingredient from its current animated position
+            let droppedBox = {
+                x: topBoxPosition.x,
+                z: topBoxPosition.z,
+                y: topBoxPosition.y,
+                ingredient: Ingredient,
+                id: dropId,
+            };
+            
+            // Add to falling blocks
+            setFallenBlocks(prev => [...prev, droppedBox]);
+            
+            // Play impact sound for the dropped ingredient
+            setTimeout(() => {
+                playSound('impact');
+            }, 750);
+            
+            // Move the base Bun down by the height of the dropped ingredient
+            setTowerYOffset(current => current + height);
+        }
         
         // Set lives to 0 - this will trigger the useEffect to call handleGameOver()
         setLives(0);
@@ -466,7 +633,7 @@ function App() {
         setFallenBlocks(prev => [...prev, topBunBox]);
         
         // Move the base Bun down by the height of the top bun
-        setTowerYOffset(towerYOffset + topBunHeight);
+        setTowerYOffset(current => current + topBunHeight);
     };
 
     // Handle game over and report score to Telegram
@@ -546,13 +713,63 @@ function App() {
             console.log('📊 Captured score at life loss:', scoreAtLifeLoss.current);
             console.log('📊 Lives:', lives);
             
+            // Drop active ingredient if there is one (similar to stop button behavior)
+            if (activeBox) {
+                console.log('🎯 Dropping active ingredient on lives lost');
+                playSound('drop');
+                
+                let Ingredient = activeBox.ingredient;
+                let height = Ingredient.height;
+                
+                // Create unique ID for this drop
+                const dropId = `lives-drop-${Date.now()}-${Math.random()}`;
+                
+                // Drop the ingredient from its current animated position
+                let droppedBox = {
+                    x: topBoxPosition.x,
+                    z: topBoxPosition.z,
+                    y: topBoxPosition.y,
+                    ingredient: Ingredient,
+                    id: dropId,
+                };
+                
+                // Add to falling blocks
+                setFallenBlocks(prev => [...prev, droppedBox]);
+                
+                // Play impact sound for the dropped ingredient
+                setTimeout(() => {
+                    playSound('impact');
+                }, 750);
+                
+                // Move the base Bun down by the height of the dropped ingredient
+                setTowerYOffset(current => current + height);
+            }
+            
+            // Drop the top bun from above the tower (same as other scenarios)
+            let topBunHeight = TopBun.height;
+            let stackHeight = successfulDrops > 0 ? (successfulDrops * 0.5) + towerYOffset : towerYOffset;
+            
+            let topBunBox = {
+                x: 0,
+                z: 0,
+                y: stackHeight + topBunHeight + ANIMATION_DROP_HEIGHT + 2,
+                ingredient: TopBun,
+                id: `topbun-lives-${Date.now()}`,
+            };
+            
+            // Add top bun to falling blocks
+            setFallenBlocks(prev => [...prev, topBunBox]);
+            
+            // Move the base Bun down by the height of the top bun
+            setTowerYOffset(current => current + topBunHeight);
+            
             // Use captured score to avoid race condition
             const scoreToUse = scoreAtLifeLoss.current !== null ? scoreAtLifeLoss.current : score;
             console.log('🔍 LIVES LOST - Using score:', scoreToUse);
             
             handleGameOver(scoreToUse);
         }
-    }, [lives, gameStarted, gameFinished, handleGameOver, score]);
+    }, [lives, gameStarted, gameFinished, handleGameOver, score, activeBox, topBoxPosition, successfulDrops, towerYOffset, playSound]);
 
     const getCameraPosition = () => {
         // Keep camera at a fixed position since we want the base to sink down
