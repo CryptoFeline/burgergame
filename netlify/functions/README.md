@@ -2,20 +2,22 @@
 
 Serverless functions for Telegram bot functionality:
 
-## Main Bot Function
+## Bot Functions
 - `telegram-bot.js` - Complete Telegram bot webhook handler
   - **Game Launch**: Handles `/start` command and game button clicks
-  - **Score Processing**: Receives callback queries from `TelegramGameProxy.postScore()`
-  - **Leaderboard Management**: Calls `setGameScore()` API to update Telegram's leaderboard
-  - **Service Messages**: Enables automatic score announcements in group chats
+  - **Session Management**: Stores game context when launching games
+  - **Multiple Commands**: `/highscores`, `/advanced_scores`, `/stats`, etc.
   - **Error Handling**: Comprehensive logging and error recovery
+
+- `game-session.js` - Session-based score management
+  - **Session Storage**: Stores user/chat/message context for score submission
+  - **Score Processing**: Receives score data from game and calls `setGameScore()`
+  - **Leaderboard Integration**: Updates Telegram's native leaderboard system
+  - **Service Messages**: Enables automatic score announcements in group chats
 
 ## Implementation Details
 - Uses Grammy.js framework for Telegram Bot API
-- Follows official Telegram Games API flow:
-  1. User clicks "Play" → callback query → bot returns game URL
-  2. Game calls `postScore()` → callback query with score data → bot calls `setGameScore()`
-  3. Telegram automatically updates leaderboard and posts service messages
+- Session-based architecture: Bot stores context → Game submits with sessionId → Function calls setGameScore()
 - Supports both regular chat and inline game messages
 - Environment: Netlify Functions (Node.js serverless)
 

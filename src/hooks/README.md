@@ -11,7 +11,8 @@ Custom hooks for game functionality:
 ## Telegram Integration
 - `useTelegramGame.js` - Telegram Games API integration
   - Environment detection (Telegram vs standalone)
-  - Score submission via `TelegramGameProxy.postScore()`
+  - Score submission via session-based architecture (not TelegramGameProxy.postScore)
+  - Session management and score reporting to Netlify Functions
   - User data and game state management
   - Telegram-specific UI adaptations
 
